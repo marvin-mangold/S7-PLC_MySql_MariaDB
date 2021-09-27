@@ -3,7 +3,7 @@
 ### General informations 
 
     Server user settings:
-    The user you want to login to sql server needs to set up using "mysql_native_password" as authenticate method. 
+    The user you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
     You should create a new user for connecting to plc by typing following into your server commandline:
     1.    CREATE USER 'your_new_username'@'%';
     2.    ALTER USER 'your_new_username'@'%' IDENTIFIED WITH 'mysql_native_password';
