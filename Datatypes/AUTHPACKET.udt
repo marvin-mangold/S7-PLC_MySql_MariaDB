@@ -1,0 +1,10 @@
+﻿TYPE "AUTHPACKET"
+VERSION : 0.1
+   STRUCT
+      AUTH_PLUGIN_NAME : String;   // authentication plugin name 
+      AUTH_PLUGIN_DATA : String;   // authentication seed
+      AUTH_PLUGIN_RESPONSE : String;   // authentication response
+   END_STRUCT;
+
+END_TYPE
+

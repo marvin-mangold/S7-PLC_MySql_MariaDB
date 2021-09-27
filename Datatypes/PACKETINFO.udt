@@ -1,0 +1,10 @@
+﻿TYPE "PACKETINFO"
+VERSION : 0.1
+   STRUCT
+      LENGTH : DInt;   // packet length
+      NUMBER : DInt;   // packet number
+      "TYPE" : Byte;   // packet type 0 = OK | fb = LOCALINFILE | ff = ERROR | fe = AUTHSWITCHREQUEST
+   END_STRUCT;
+
+END_TYPE
+

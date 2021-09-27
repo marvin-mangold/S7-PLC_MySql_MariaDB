@@ -1,0 +1,23 @@
+﻿TYPE "FIELDFLAGS"
+VERSION : 0.1
+   STRUCT
+      NOT_NULL : Bool := false;   // 00000000 00000001 field cannot be null
+      PRIMARY_KEY : Bool := false;   // 00000000 00000010 field is a primary key
+      UNIQUE_KEY : Bool := false;   // 00000000 00000100 field is unique
+      MULTIPLE_KEY : Bool := false;   // 00000000 00001000 field is in a multiple key
+      BLOB : Bool := false;   // 00000000 00010000 is this field a Blob
+      UNSIGNED : Bool := false;   // 00000000 00100000 is this field unsigned
+      ZEROFILL_FLAG : Bool := false;   // 00000000 01000000 is this field a zerofill
+      BINARY_COLLATION : Bool := false;   // 00000000 10000000 whether this field has a binary collation
+      ENUM : Bool := false;   // 00000001 00000000 Field is an enumeration
+      AUTO_INCREMENT : Bool := false;   // 00000010 00000000 field auto-increment
+      TIMESTAMP : Bool := false;   // 00000100 00000000 field is a timestamp value
+      SET : Bool := false;   // 00001000 00000000 field is a SET
+      NO_DEFAULT_VALUE_FLAG : Bool := false;   // 00010000 00000000 field doesn't have default value
+      ON_UPDATE_NOW_FLAG : Bool := false;   // 00100000 00000000 field is set to NOW on UPDATE
+      RESERVED_BIT_14 : Bool := false;   // 01000000 00000000 
+      NUM_FLAG : Bool := false;   // 10000000 00000000 field is num
+   END_STRUCT;
+
+END_TYPE
+

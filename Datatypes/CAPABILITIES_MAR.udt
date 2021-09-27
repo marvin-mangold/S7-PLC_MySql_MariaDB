@@ -1,0 +1,15 @@
+﻿TYPE "CAPABILITIES_MAR"
+VERSION : 0.1
+   STRUCT
+      CLIENT_PROGRESS : Bool := false;   // 00000001 Client support progress indicator (since 10.2)
+      CLIENT_COM_MULTI : Bool := false;   // 00000010 Permit COM_MULTI protocol
+      CLIENT_STMT_BULK_OPERATIONS : Bool := false;   // 00000100 Permit bulk insert
+      CLIENT_EXTENDED_TYPE_INFO : Bool := false;   // 00001000 add extended metadata information
+      CLIENT_CACHE_METADATA : Bool := false;   // 00010000 permit skipping metadata
+      RESERVED_BIT_05 : Bool := false;   // 00100000
+      RESERVED_BIT_06 : Bool := false;   // 01000000
+      RESERVED_BIT_07 : Bool := false;   // 10000000
+   END_STRUCT;
+
+END_TYPE
+

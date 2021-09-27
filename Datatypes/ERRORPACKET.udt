@@ -1,0 +1,15 @@
+﻿TYPE "ERRORPACKET"
+VERSION : 0.1
+   STRUCT
+      ERROR_CODE : DInt;   // error code. see error list online
+      STAGE : DInt;   // stage
+      MAX_STAGE : DInt;   // max_stage
+      PROGRESS : DInt;   // progress
+      PROGRESS_INFO : String;   // progress_info
+      SQL_STATE_MARKER : String;   // sql state marker '#'
+      SQL_STATE : String;   // sql state
+      ERROR_MESSAGE : String;   // human-readable error message
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,19 @@
+﻿TYPE "SERVERINFO"
+VERSION : 0.1
+   STRUCT
+      PROTOCOL : DInt;   // protocol version 
+      "VERSION" : String;   // server version
+      CONNECTION_ID : DInt;   // connection id 
+      COLLATION : DInt;   // collation (character set number)
+      AUTH_PLUGIN_DATA1 : String;   // scramble 1st part (authentication seed) 
+      AUTH_PLUGIN_DATA2 : String;   // scramble 2nd part (authentication seed) 
+      AUTH_PLUGIN_LENGTH : DInt;   // plugin data length
+      AUTH_PLUGIN_NAME : String;   // authentication plugin name 
+      STATUS : "SERVERSTATUS";   // status flags 
+      CAPABILITIES_STD : "CAPABILITIES_STD";   // standard capabilities
+      CAPABILITIES_EXT : "CAPABILITIES_EXT";   // extended capabilities
+      CAPABILITIES_MAR : "CAPABILITIES_MAR";   // mariaDB capabilities
+   END_STRUCT;
+
+END_TYPE
+

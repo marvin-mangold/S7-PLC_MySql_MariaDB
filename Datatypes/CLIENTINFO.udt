@@ -1,0 +1,17 @@
+﻿TYPE "CLIENTINFO"
+VERSION : 0.1
+   STRUCT
+      USERNAME : String;   // server login username
+      PASSWORD : String;   // server login password
+      DATABASE : String;   // server database name
+      COLLATION : DInt;   // collation (character set number)
+      MAX_PACKET_SIZE : DInt;   // max size of a command packet that the client wants to send to the server 
+      AUTH_PLUGIN_RESPONSE : String;   // authentication response
+      AUTH_PLUGIN_NAME : String;   // authentication plugin name 
+      CAPABILITIES_STD : "CAPABILITIES_STD";   // standard capabilities
+      CAPABILITIES_EXT : "CAPABILITIES_EXT";   // extended capabilities
+      CAPABILITIES_MAR : "CAPABILITIES_MAR";   // mariaDB capabilities
+   END_STRUCT;
+
+END_TYPE
+

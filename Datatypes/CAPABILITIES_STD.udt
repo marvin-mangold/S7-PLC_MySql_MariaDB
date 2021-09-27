@@ -1,0 +1,23 @@
+﻿TYPE "CAPABILITIES_STD"
+VERSION : 0.1
+   STRUCT
+      CLIENT_MYSQL : Bool := false;   // 00000000 00000001 Set if Client is MySQL else: Not Set
+      FOUND_ROWS : Bool := false;   // 00000000 00000010 Send found rows instead of affected rows in EOF_Packet
+      LONG_FLAG : Bool := false;   // 00000000 00000100 Longer flags in Protocol::ColumnDefinition320
+      CONNECT_WITH_DB : Bool := false;   // 00000000 00001000 One can specify db on connect
+      NO_SCHEMA : Bool := false;   // 00000000 00010000 Do not permit database.table.column
+      COMPRESS : Bool := false;   // 00000000 00100000 Can use compression protocol
+      ODBC : Bool := false;   // 00000000 01000000 Special handling of ODBC behavior
+      LOCAL_FILES : Bool := false;   // 00000000 10000000 Can use LOAD DATA LOCAL
+      IGNORE_SPACE : Bool := false;   // 00000001 00000000 Ignore spaces before '('
+      SPEAKS_PROTOCOL_41 : Bool := false;   // 00000010 00000000 Supports the 4.1 protocol
+      CLIENT_INTERACTIVE : Bool := false;   // 00000100 00000000 Server: Supports interactive and noninteractive clients | Client: Client is interactive
+      SSL : Bool := false;   // 00001000 00000000 Can use SSL
+      IGNORE_SIGPIPE : Bool := false;   // 00010000 00000000 Do not issue SIGPIPE if network failures occur (libmysqlclient only)
+      TRANSACTIONS : Bool := false;   // 00100000 00000000 Server: Can send status flags in EOF_Packet | Client: Expects status flags in EOF_Packet
+      RESERVED : Bool := false;   // 01000000 00000000 Unused
+      AUTH_PROTOCOL_41 : Bool := false;   // 10000000 00000000 Supports Authentication::Native41
+   END_STRUCT;
+
+END_TYPE
+

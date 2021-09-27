@@ -1,0 +1,20 @@
+﻿TYPE "COLUMNINFO"
+VERSION : 0.1
+   STRUCT
+      CATALOG : String;   // always 'def'
+      SCHEMA : String;   // schema
+      TABLE_ALIAS : String;   // table alias
+      TABLE : String;   // table
+      COLUMN_ALIAS : String;   // column alias
+      COLUMN : String;   // column
+      LENGTH_FIXED_FIELDS : DInt;   // length of fixed fields (=0xC)
+      COLLATION : DInt;   // collation (character set number)
+      MAX_SIZE : DInt;   // max column size
+      FIELD_TYPES : DInt;   // field types
+      FIELD_DETAIL_FLAG : DInt;   // field detail flag
+      DECIMALS : DInt;   // decimals
+      FIELD_FLAGS : "FIELDFLAGS";
+   END_STRUCT;
+
+END_TYPE
+

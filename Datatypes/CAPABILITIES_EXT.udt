@@ -1,0 +1,23 @@
+﻿TYPE "CAPABILITIES_EXT"
+VERSION : 0.1
+   STRUCT
+      MULTI_STATEMENTS : Bool := false;   // 00000000 00000001 Enable/disable multi-stmt support
+      MULTI_RESULTS : Bool := false;   // 00000000 00000010 Enable/disable multi-results
+      PS_MULTI_RESULTS : Bool := false;   // 00000000 00000100 Enable/disable multi-results for PrepareStatement
+      PLUGIN_AUTH : Bool := false;   // 00000000 00001000 Client supports plugin authentication
+      CONNECT_ATTRS : Bool := false;   // 00000000 00010000 Client send connection attributes
+      PLUGIN_AUTH_LENENC : Bool := false;   // 00000000 00100000 Enable authentication response packet to be larger than 255 bytes
+      HANDLE_EXPIRED_PASSWORDS : Bool := false;   // 00000000 01000000 Understands length-encoded integer for auth response data in Protocol::HandshakeResponse41
+      SESSION_TRACK : Bool := false;   // 00000000 10000000 Enable/disable session tracking in OK_Packet
+      DEPRECATE_EOF : Bool := false;   // 00000001 00000000 EOF_Packet deprecation (OK_Packet replace EOF_Packet in end of Resulset when in text format. EOF_Packet between columns definition and resultsetRows is deleted)
+      RESERVED_BIT_09 : Bool := false;   // 00000010 00000000
+      ZSTD_COMPRESSION_ALGORITHM : Bool := false;   // 00000100 00000000 Support zstd protocol compression
+      RESERVED_BIT_11 : Bool := false;   // 00001000 00000000
+      RESERVED_BIT_12 : Bool := false;   // 00010000 00000000
+      CAPABILITY_EXTENSION : Bool := false;   // 00100000 00000000 reserved for futur use. (Was CLIENT_PROGRESS Client support progress indicator before 10.2)
+      RESERVED_BIT_14 : Bool := false;   // 01000000 00000000
+      RESERVED_BIT_15 : Bool := false;   // 10000000 00000000
+   END_STRUCT;
+
+END_TYPE
+

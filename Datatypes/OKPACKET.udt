@@ -1,0 +1,10 @@
+﻿TYPE "OKPACKET"
+VERSION : 0.1
+   STRUCT
+      AFFECTED_ROWS : DInt;   // error code. see error list online
+      LAST_INSERT_ID : DInt;   // stage
+      WARNING_COUNT : DInt;   // max_stage
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,23 @@
+﻿TYPE "SERVERSTATUS"
+VERSION : 0.1
+   STRUCT
+      IN_TRANS : Bool := false;   // 00000000 00000001 A transaction is currently active
+      AUTO_COMMIT : Bool := false;   // 00000000 00000010 Autocommit mode is set
+      MULTI_QUERY : Bool := false;   // 00000000 00000100 more results exists (more packet follow)
+      MORE_RESULTS_EXISTS : Bool := false;   // 00000000 00001000
+      BAD_INDEX_USED : Bool := false;   // 00000000 00010000
+      NO_INDEX_USED : Bool := false;   // 00000000 00100000
+      CURSOR_EXISTS : Bool := false;   // 00000000 01000000 when using COM_STMT_FETCH, indicate that current cursor still has result
+      LAST_ROW_SENT : Bool := false;   // 00000000 10000000 when using COM_STMT_FETCH, indicate that current cursor has finished to send results
+      DB_DROPPED : Bool := false;   // 00000001 00000000 database has been dropped
+      NO_BACKSLASH_ESCAPES : Bool := false;   // 00000010 00000000 current escape mode is "no backslash escape"
+      METADATA_CHANGED : Bool := false;   // 00000100 00000000 A DDL change did have an impact on an existing PREPARE (an automatic reprepare has been executed)
+      QUERY_WAS_SLOW : Bool := false;   // 00001000 00000000
+      PS_OUT_PARAMS : Bool := false;   // 00010000 00000000 this resultset contain stored procedure output parameter
+      IN_TRANS_READONLY : Bool := false;   // 00100000 00000000 current transaction is a read-only transaction
+      SESSION_STATE_CHANGED : Bool := false;   // 01000000 00000000 session state change. see Session change type for more information
+      RESERVED_BIT_15 : Bool := false;   // 10000000 00000000
+   END_STRUCT;
+
+END_TYPE
+
