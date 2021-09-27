@@ -27,7 +27,7 @@
   * Connect with SQL-Server
   * Send PING to SQL-Server
   * Send QUERY String to SQL-Server
-  * This client works with the MariaDB client/server protocol
+  * This client works with client/server protocol
   * Results are saved as Strings
                 
 * Settings:<br>
