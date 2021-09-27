@@ -11,7 +11,7 @@
     4.    GRANT ALL PRIVILEGES ON your_databasename.your_tablename TO 'your_new_username'@'%';
     5.    FLUSH PRIVILEGES;
 
-![S7-PLC_MySql_MariaDB_Bild03](https://user-images.githubusercontent.com/10088323/134989822-31b2e841-9a49-4841-b9f3-eb6b73998760.JPG)
+![S7-PLC_MySql_MariaDB_Bild03](https://user-images.githubusercontent.com/10088323/134990587-494fd77e-f111-4fd2-b32c-3f1e69d1b739.JPG)
 
 * Tested with:
   * CPU1214C DC/DC/DC FW:V4.3
@@ -39,7 +39,7 @@
  
  ### Call
 
-![S7-PLC_MariaDB_01](https://user-images.githubusercontent.com/10088323/134831066-2437e72a-e7ba-4571-9a47-7d6f2e39c32e.JPG)
+![S7-PLC_MySql_MariaDB_Bild01](https://user-images.githubusercontent.com/10088323/134990602-6688fec2-1f42-4570-974f-aeafc84e737e.JPG)
 
 ### Parameter
 
@@ -67,8 +67,8 @@ Rows|Constant|Int|10|max number of rows
 Stringsize|Constant|Int|50|max number of chars in resultstrings
 
  ### Video
- 
-https://user-images.githubusercontent.com/10088323/134830634-00b8a367-cd1e-4263-ac3a-867e542dcd4c.mp4
+
+https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4
 
 ### Status Codes
     Info:
