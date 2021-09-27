@@ -32,10 +32,10 @@
                 
 * Settings:<br>
   The following constants can be adjusted depending on the expected maximum number of:
-  * Colums      |   columns in a result message from Server
-  * Rows        |   rows in a result message from Server
-  * Stringsize  |   chars in a String of a result (column or row) from Server
-  * Buffersize  |   bytes send from Server in a message from Server
+  * Colums      --   columns in a result message from Server
+  * Rows        --   rows in a result message from Server
+  * Stringsize  --   chars in a String of a result (column or row) from Server
+  * Buffersize  --   bytes send from Server in a message from Server
  
  ### Call
 
