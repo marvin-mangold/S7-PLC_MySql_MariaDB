@@ -1,0 +1,1360 @@
+﻿FUNCTION_BLOCK "MySql_MariaDB_Client"
+TITLE = MySql and MariaDB SQL Server
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//This client works with the client/server protocol.
+   VAR_INPUT 
+      connect : Bool := False;   // start communication and connect
+   END_VAR
+   VAR_INPUT DB_SPECIFIC
+      connectionID : CONN_OUC := 16#1;   // connection reference / identifier
+      hardwareID : HW_ANY := 64;   // HW-identifier of IE-interface submodule
+   END_VAR
+   VAR_INPUT 
+      server : Int := 0;   // server (Mysql = 1 / MariaDB = 2)
+   END_VAR
+   VAR_INPUT DB_SPECIFIC
+      ipaddress : String[15] := '192.168.0.1';   // server IPv4 address '192.168.0.1'
+      remotePort : UInt := 3306;   // server portnumber
+   END_VAR
+   VAR_INPUT 
+      username : String := 'root';   // server login username
+      password : String := 'root';   // server login password
+      database : String := 'data';   // server database name
+   END_VAR
+
+   VAR_OUTPUT 
+      status : Word := 16#0;   // infocode / errorcode
+      connected : Bool := false;   // connection established
+      nColumns : DInt := 0;   // number of recieved columns
+      nRows : DInt := 0;   // number of recieved rows
+      resultData : Array[1..#Columns, 0..#Rows] of String[#Stringsize];   // resultdata: ResultData[1,0] = Columnname | ResultData[1,1-X] = Rowdata
+   END_VAR
+
+   VAR_IN_OUT 
+      ping : Bool := false;   // ping command
+      query : Bool := false;   // query command
+      querydata : Array[*] of String;   // query data / sql statement
+   END_VAR
+
+   VAR 
+      tcpInfo {InstructionName := 'TCON_IP_v4'; LibVersion := '1.0'} : TCON_IP_v4;   // tcp settings
+      serverInfo : "SERVERINFO";   // server settings
+      clientInfo : "CLIENTINFO";   // client settings
+      packetInfo : "PACKETINFO";   // packet info
+      errorPacket : "ERRORPACKET";   // error packet data
+      okPacket : "OKPACKET";   // ok packet data
+      authPacket : "AUTHPACKET";   // authentication switch request packet
+      capabilities : Struct   // aligned capabilities of client and server
+         "standard" : "CAPABILITIES_STD";
+         extended : "CAPABILITIES_EXT";
+         mariadb : "CAPABILITIES_MAR";
+      END_STRUCT;
+      recvBuffer : Array[0..#Buffersize] of Byte;   // buffer for recieved data
+      sendBuffer : Array[0..#Buffersize] of Byte;   // buffer for sending data
+      Tcon {InstructionName := 'TCON'; LibVersion := '4.0'} : TCON;   // instance TCON
+      Tdiscon {InstructionName := 'TDISCON'; LibVersion := '2.1'} : TDISCON;   // instance TDISCON
+      Tdiag {InstructionName := 'T_DIAG'; LibVersion := '1.2'} : T_DIAG;   // instance T_DIAG
+      Tsend {InstructionName := 'TSEND'; LibVersion := '4.0'} : TSEND;   // instance TSEND
+      Trecv {InstructionName := 'TRCV'; LibVersion := '4.0'} : TRCV;   // instance TRCV
+      state : Struct   // state data
+         Tcon : Struct   // parameter TCON
+            done : Bool := false;
+            busy : Bool := false;
+            error : Bool := false;
+            status : Word := 16#0;
+         END_STRUCT;
+         Tdiscon : Struct   // parameter TDISCON
+            done : Bool := false;
+            busy : Bool := false;
+            error : Bool := false;
+            status : Word := 16#0;
+         END_STRUCT;
+         Tdiag : Struct   // parameter T_DIAG
+            done : Bool := false;
+            busy : Bool := false;
+            error : Bool := false;
+            status : Word := 16#0;
+            trigger {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+            result {InstructionName := 'TDiag_Status'; LibVersion := '1.0'} : TDiag_Status;
+         END_STRUCT;
+         Tsend : Struct   // instance TSEND
+            done : Bool := false;
+            busy : Bool := false;
+            error : Bool := false;
+            status : Word := 16#0;
+         END_STRUCT;
+         Trecv : Struct   // instance TRCV
+            newdata : Bool := false;
+            length : UDInt := 0;
+            busy : Bool := false;
+            error : Bool := false;
+            status : Word := 16#0;
+         END_STRUCT;
+         login : Bool := false;   // login command
+         status : Word := 0;   // infocode / errorcode
+         step : Int := 0;   // sequencer
+         tcpConnect : Bool := false;   // TCP connect
+         tcpConnected : Bool := false;   // TCP connection established
+         serverConnected : Bool := false;   // Server connection established
+         newdata : Bool := false;   // new data recieved
+         newdatalength : DInt := 0;   // length of new data recieved
+         sent : Bool := false;   // data sent to server
+         recieve : Bool := false;   // recieve data
+         send : Bool := false;   // send data
+         init : Bool := false;   // init flags
+      END_STRUCT;
+      "counter" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // loop counter / array index running variable
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct   // temporary variables
+         "bool" : Bool;
+         "byte" : Byte;
+         byte2 : Byte;
+         "char" : Char;
+         "int" : Int;
+         "word" : Word;
+         word2 : Word;
+         "dint" : DInt;
+         "string" : String;
+      END_STRUCT;
+      retval : Struct   // return values
+         "bool" : Bool;
+         "int" : Int;
+         "word" : Word;
+      END_STRUCT;
+      empty : Struct   // empty data for initialising
+         serverInfo : "SERVERINFO";   // server settings
+         packetinfo : "PACKETINFO";   // packet info
+         errorPacket : "ERRORPACKET";   // error packet data
+         okPacket : "OKPACKET";   // ok packet data
+         Buffer : Array[0..#Buffersize] of Byte;   // buffer for recieved data
+      END_STRUCT;
+      column : Struct   // column data
+         Info : "COLUMNINFO";   // column info
+         "counter" : Int;   // loop counter
+      END_STRUCT;
+      ip : Struct   // ip address data
+         count : DInt;
+         strings : Array[1..4] of String;
+      END_STRUCT;
+      sha1 : Struct   // sha1 data
+         left : String;
+         right : String;
+         "counter" : Int;
+      END_STRUCT;
+      querystatement : Struct   // DInt
+         low : DInt;   // query data array lower bounds
+         up : DInt;   // query data array upper bounds
+         "counter" : DInt;   // counter
+      END_STRUCT;
+   END_VAR
+
+   VAR CONSTANT 
+      Buffersize : Int := 4096;   // size of send and recieve buffer in bytes
+      Columns : Int := 20;   // max number of columns
+      Rows : Int := 10;   // max number of rows
+      Stringsize : Int := 50;   // max number of chars in resultstrings
+   END_VAR
+
+
+BEGIN
+	REGION licence and information
+	(* 
+	███╗   ███╗██╗   ██╗███████╗ ██████╗ ██╗             ██╗    ███╗   ███╗ █████╗ ██████╗ ██╗ █████╗ ██████╗ ██████╗      ██████╗██╗     ██╗███████╗███╗   ██╗████████╗
+	████╗ ████║╚██╗ ██╔╝██╔════╝██╔═══██╗██║            ██╔╝    ████╗ ████║██╔══██╗██╔══██╗██║██╔══██╗██╔══██╗██╔══██╗    ██╔════╝██║     ██║██╔════╝████╗  ██║╚══██╔══╝
+	██╔████╔██║ ╚████╔╝ ███████╗██║   ██║██║           ██╔╝     ██╔████╔██║███████║██████╔╝██║███████║██║  ██║██████╔╝    ██║     ██║     ██║█████╗  ██╔██╗ ██║   ██║   
+	██║╚██╔╝██║  ╚██╔╝  ╚════██║██║▄▄ ██║██║          ██╔╝      ██║╚██╔╝██║██╔══██║██╔══██╗██║██╔══██║██║  ██║██╔══██╗    ██║     ██║     ██║██╔══╝  ██║╚██╗██║   ██║   
+	██║ ╚═╝ ██║   ██║   ███████║╚██████╔╝███████╗    ██╔╝       ██║ ╚═╝ ██║██║  ██║██║  ██║██║██║  ██║██████╔╝██████╔╝    ╚██████╗███████╗██║███████╗██║ ╚████║   ██║   
+	╚═╝     ╚═╝   ╚═╝   ╚══════╝ ╚══▀▀═╝ ╚══════╝    ╚═╝        ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═════╝ ╚═════╝      ╚═════╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝  
+	========================================================================================================
+	MIT License
+	Copyright (C) 2021  Marvin Mangold (Marvin.Mangold00@googlemail.com)
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	--------------------------------------------------------------------------------------------------------
+	Library:        SQL
+	Tested with:    CPU1214C DC/DC/DC FW:V4.3
+	                CPU1514-2PN FW:V2.6
+	                MariaDB Server: 5.5.5-10.6.4-MariaDB
+	                MySql Server: 8.0.26
+	Requirements:   PLC:    S7-1200 or S7-1500
+	                Server: User authentication with "mysql_native_password" or "caching_sha2_password"
+	Functionality:  Connect with SQL-Server
+	                Send PING to SQL-Server
+	                Send QUERY String to SQL-Server
+	                This client works with the client/server protocol
+	                Results are saved as Strings
+	Settings:       The following constants can be adjusted depending on the expected maximum number of:
+	                - Colums        --   columns in a result message from Server
+	                - Rows          --   rows in a result message from Server
+	                - Stringsize    --   chars in a String of a result (column or row) from Server
+	                - Buffersize    --   bytes send from Server in a message from Server
+	--------------------------------------------------------------------------------------------------------
+	Status Codes: (info)
+	W#16#0000:  No Error
+	W#16#0002:  TCP connection is not established
+	Status Codes: (error)
+	W#16#0010:  Bad IP-Address, IP-Address should be in this format: '192.168.0.1'
+	W#16#0011:  Client capability "CONNECT_ATTRS" is set, but it is not implemented
+	W#16#0012:  SQL error, for further information see instancedatablock.errorPacket.ERROR_MESSAGE
+	W#16#0013:  Client capability "SESSION_TRACK" is set, but it is not implemented
+	W#16#0014:  Client capability "CLIENT_CACHE_METADATA" is set, but it is not implemented
+	W#16#0015:  Client capability "CLIENT_EXTENDED_TYPE_INFO" is set, but it is not implemented
+	W#16#0016:  Input "server" wrong, 1 = Mysql / 2 = MariaDB
+	W#16#0017:  The user you want to login to sql Server is set up to authenticate with "caching_sha2_password", 
+	            change this to "mysql_native_password", or create a new user for connecting to plc by 
+	            typing following into your server commandline:
+	            1.    CREATE USER 'your_new_username'@'%';
+	            2.    ALTER USER 'your_new_username'@'%' IDENTIFIED WITH 'mysql_native_password';
+	            3.    ALTER USER 'your_new_username'@'%' IDENTIFIED BY 'your_new_password';
+	            4.    GRANT ALL PRIVILEGES ON your_databasename.your_tablename TO 'your_new_username'@'%';
+	            5.    FLUSH PRIVILEGES;  
+	W#16#0020:  Wrong packet type recieved after login request, expectet OK or ERROR
+	W#16#0021:  Recieved LOCALINFILE packet, but it is not implemented
+	W#16#0023:  Number of colums in result data is greater than the set value number of columns, adjust the constant "Columns"
+	W#16#0024:  Number of recieved bytes is greater than the set value number of bytes, adjust the constant "Buffersize"
+	W#16#0025:  Number of rows in result data is greater than the set value number of rows, adjust the constant "Rows"
+	--------------------------------------------------------------------------------------------------------
+	Server status:
+	-----------------------------------------------------
+	        IN_TRANS                    00000000 00000001
+	        AUTO_COMMIT                 00000000 00000010
+	        MULTI_QUERY(unused)         00000000 00000100
+	        MORE_RESULTS_EXISTS         00000000 00001000
+	        BAD_INDEX_USED              00000000 00010000
+	        NO_INDEX_USED               00000000 00100000
+	        CURSOR_EXISTS               00000000 01000000
+	        LAST_ROW_SENT               00000000 10000000
+	        DB_DROPPED                  00000001 00000000
+	        NO_BACKSLASH_ESCAPES        00000010 00000000
+	        METADATA_CHANGED            00000100 00000000
+	        QUERY_WAS_SLOW              00001000 00000000
+	        PS_OUT_PARAMS               00010000 00000000
+	        IN_TRANS_READONLY           00100000 00000000
+	        SESSION_STATE_CHANGED       01000000 00000000
+	-----------------------------------------------------
+	Capabilities standard:
+	-----------------------------------------------------
+	        CLIENT_MYSQL                00000000 00000001
+	        FOUND_ROWS                  00000000 00000010
+	        LONG_FLAG                   00000000 00000100
+	        CONNECT_WITH_DB             00000000 00001000
+	        NO_SCHEMA                   00000000 00010000
+	        COMPRESS                    00000000 00100000
+	        ODBC                        00000000 01000000
+	        LOCAL_FILES                 00000000 10000000
+	        IGNORE_SPACE                00000001 00000000
+	        SPEAKS_PROTOCOL_41          00000010 00000000
+	        CLIENT_INTERACTIVE          00000100 00000000
+	        SSL                         00001000 00000000
+	        IGNORE_SIGPIPE              00010000 00000000
+	        TRANSACTIONS                00100000 00000000
+	        RESERVED                    01000000 00000000
+	        AUTH_PROTOCOL_41            10000000 00000000
+	-----------------------------------------------------        
+	Capabilities extended:
+	-----------------------------------------------------
+	        MULTI_STATEMENTS            00000000 00000001
+	        MULTI_RESULTS               00000000 00000010
+	        PS_MULTI_RESULTS            00000000 00000100
+	        PLUGIN_AUTH                 00000000 00001000
+	        CONNECT_ATTRS               00000000 00010000
+	        PLUGIN_AUTH_LENENC          00000000 00100000
+	        HANDLE_EXPIRED_PASSWORDS    00000000 01000000
+	        SESSION_TRACK               00000000 10000000
+	        DEPRECATE_EOF               00000001 00000000
+	-----------------------------------------------------        
+	Capabilities mariaDB:
+	-----------------------------------------------------
+	        CLIENT_PROGRESS                      00000001
+	        CLIENT_COM_MULTI                     00000010
+	        CLIENT_STMT_BULK_OPERATIONS          00000100
+	        CLIENT_EXTENDED_TYPE_INFO            00001000
+	        CLIENT_CACHE_METADATA                00010000
+	-----------------------------------------------------
+	Field Details Flag:
+	-----------------------------------------------------
+	        NOT_NULL                    00000000 00000001
+	        PRIMARY_KEY                 00000000 00000010
+	        UNIQUE_KEY                  00000000 00000100
+	        MULTIPLE_KEY                00000000 00001000
+	        BLOB                        00000000 00010000
+	        UNSIGNED                    00000000 00100000
+	        ZEROFILL_FLAG               00000000 01000000
+	        BINARY_COLLATION            00000000 10000000
+	        ENUM                        00000001 00000000
+	        AUTO_INCREMENT              00000010 00000000
+	        TIMESTAMP                   00000100 00000000
+	        SET                         00001000 00000000
+	        NO_DEFAULT_VALUE_FLAG       00010000 00000000
+	        ON_UPDATE_NOW_FLAG          00100000 00000000
+	        NUM_FLAG                    10000000 00000000
+	-----------------------------------------------------
+	Field Types:
+	-----------------------------------------------------
+	        00: DECIMAL
+	        01: TINY
+	        02: SHORT
+	        03: LONG
+	        04: FLOAT
+	        05: DOUBLE
+	        06: NULL
+	        07: TIMESTAMP
+	        08: LONGLONG
+	        09: INT24
+	        10: DATE
+	        11: TIME
+	        12: DATETIME
+	        13: YEAR
+	        14: NEWDATE
+	        15: VARCHAR
+	        16: BIT
+	        17: TIMESTAMP2
+	        18: DATETIME2
+	        19: TIME2
+	        245: JSON
+	        246: NEWDECIMAL
+	        247: ENUM
+	        248: SET
+	        249: TINY_BLOB
+	        250: MEDIUM_BLOB
+	        251: LONG_BLOB
+	        252: BLOB
+	        253: VAR_STRING
+	        254: STRING
+	        255: GEOMETRY
+	-----------------------------------------------------
+	Collation:
+	-----------------------------------------------------
+	        01: big5        | big5_chinese_ci
+	        03: dec8        | dec8_swedish_ci
+	        04: cp850       | cp850_general_ci
+	        06: hp8         | hp8_english_ci
+	        07: koi8r       | koi8r_general_ci
+	        08: latin1      | latin1_swedish_ci
+	        09: latin2      | latin2_general_ci
+	        10: swe7        | swe7_swedish_ci
+	        11: ascii       | ascii_general_ci
+	        12: ujis        | ujis_japanese_ci
+	        13: sjis        | sjis_japanese_ci
+	        16: hebrew      | hebrew_general_ci
+	        18: tis620      | tis620_thai_ci
+	        19: euckr       | euckr_korean_ci
+	        22: koi8u       | koi8u_general_ci
+	        24: gb2312      | gb2312_chinese_ci
+	        25: greek       | greek_general_ci
+	        26: cp1250      | cp1250_general_ci
+	        28: gbk         | gbk_chinese_ci
+	        30: latin5      | latin5_turkish_ci
+	        32: armscii8    | armscii8_general_ci
+	        33: utf8        | utf8_general_ci
+	        35: ucs2        | ucs2_general_ci
+	        36: cp866       | cp866_general_ci
+	        37: keybcs2     | keybcs2_general_ci
+	        38: macce       | macce_general_ci
+	        39: macroman    | macroman_general_ci
+	        40: cp852       | cp852_general_ci
+	        41: latin7      | latin7_general_ci
+	        51: cp1251      | cp1251_general_ci
+	        54: utf16       | utf16_general_ci
+	        56: utf16le     | utf16le_general_ci
+	        57: cp1256      | cp1256_general_ci
+	        59: cp1257      | cp1257_general_ci
+	        60: utf32       | utf32_general_ci
+	        63: binary      | binary
+	        92: geostd8     | geostd8_general_ci
+	        95: cp932       | cp932_japanese_ci
+	        97: eucjpms     | eucjpms_japanese_ci
+	        248: gb18030    | gb18030_chinese_ci
+	        255: utf8mb4    | utf8mb4_0900_ai_ci
+	========================================================================================================
+	*)
+	END_REGION
+	REGION TCP settings
+	    #tcpInfo.InterfaceId := #hardwareID;
+	    #tcpInfo.ID := #connectionID;
+	    #tcpInfo.ConnectionType := B#11;
+	    #tcpInfo.ActiveEstablished := True;
+	    #tcpInfo.RemotePort := #remotePort;
+	    #tcpInfo.LocalPort := 2000;
+	    // split ip-address string to 4 bytes
+	    "SPLIT"(Source := #ipaddress, Seperator := '.', Destination := #ip.strings, Count := #ip.count);
+	    // check if ip-address was detected as 4 strings
+	    IF #ip.count <> 4 THEN #state.status := W#16#0010; END_IF;
+	    // convert ip-address strings to bytes
+	    FOR #counter := 1 TO 4 DO #tcpInfo.RemoteAddress.ADDR[#counter] := INT_TO_BYTE(STRING_TO_INT(#ip.strings[#counter])); END_FOR;
+	END_REGION
+	REGION Client settings
+	    #clientInfo.USERNAME := #username;
+	    #clientInfo.PASSWORD := #password;
+	    #clientInfo.DATABASE := #database;
+	    #clientInfo.COLLATION := 33; // utf8 (utf8_general_ci)
+	    #clientInfo.MAX_PACKET_SIZE := 1024;
+	    #clientInfo.AUTH_PLUGIN_NAME := 'mysql_native_password';
+	    // set capabilities standard depending of Mysql / MariaDB
+	    CASE #server OF
+	        1:  // Server is MySql
+	            #temp."word" := W#2#10000010_00001001;
+	        2:  // Server is MariaDB
+	            #temp."word" := W#2#10000010_00001000;
+	        ELSE  // Input "server" wrong, 1 = Mysql / 2 = MariaDB
+	            #state.status := W#16#0016;
+	    END_CASE;
+	    SCATTER(IN := #temp."word", OUT => #clientInfo.CAPABILITIES_STD);
+	    // set capabilities extended
+	    #temp."word" := W#2#00000000_00001000;
+	    SCATTER(IN := #temp."word", OUT => #clientInfo.CAPABILITIES_EXT);
+	    // set capabilities mariaDB
+	    #temp."byte" := B#2#00000000;
+	    SCATTER(IN := #temp."byte", OUT => #clientInfo.CAPABILITIES_MAR);
+	END_REGION
+	REGION TCP connect
+	    // try to establish the tcp connection
+	    #Tcon(REQ := #state.tcpConnect AND NOT #state.tcpConnected AND NOT #state.Tcon.busy AND NOT #state.Tdiag.busy,
+	          ID := #tcpInfo.ID,
+	          DONE => #state.Tcon.done,
+	          BUSY => #state.Tcon.busy,
+	          ERROR => #state.Tcon.error,
+	          STATUS => #state.Tcon.status,
+	          CONNECT := #tcpInfo);
+	END_REGION
+	REGION TCP disconnect
+	    // close the tcp connection
+	    #Tdiscon(REQ := NOT #state.tcpConnect AND #state.tcpConnected AND NOT #state.Tdiscon.busy AND NOT #state.Tdiag.busy,
+	             ID := #tcpInfo.ID,
+	             DONE => #state.Tdiscon.done,
+	             BUSY => #state.Tdiscon.busy,
+	             ERROR => #state.Tdiscon.error,
+	             STATUS => #state.Tdiscon.status);
+	END_REGION
+	REGION TCP diagnose of connection
+	    // trigger for diag
+	    #state.Tdiag.trigger(IN := NOT #state.Tdiag.trigger.Q, PT := t#1s);
+	    
+	    // get tcp connection state
+	    #Tdiag(ID := #tcpInfo.ID,
+	           REQ:= NOT #state.Tdiag.busy AND NOT #state.Tdiag.trigger.Q,
+	           DONE => #state.Tdiag.done,
+	           BUSY => #state.Tdiag.busy,
+	           ERROR => #state.Tdiag.error,
+	           STATUS => #state.Tdiag.status,
+	           RESULT := #state.Tdiag.result);
+	    
+	    // check if the tcp connection is established
+	    IF #state.Tdiag.done THEN
+	        IF #state.Tdiag.result.State = B#16#4 THEN
+	            #state.tcpConnected := True;
+	        ELSE
+	            #state.tcpConnected := False;
+	        END_IF;
+	    ELSIF #state.Tdiag.error THEN
+	        #state.tcpConnected := False;
+	    END_IF;
+	    
+	    // write status if tcp connection is not established
+	    IF #state.tcpConnect AND #state.Tdiag.result.State <> B#16#4 THEN
+	        #state.status := W#16#0002;
+	    END_IF;
+	    
+	    // reset server connected flag if tcp connection is not established
+	    IF NOT #state.tcpConnected THEN
+	        #state.serverConnected := False;
+	    END_IF;
+	END_REGION
+	REGION TCP send
+	    // send data over tcp
+	    #Tsend(REQ := #state.send,
+	           ID := #tcpInfo.ID,
+	           LEN := DINT_TO_UDINT(#packetInfo.LENGTH + 4),
+	           DONE => #state.Tsend.done,
+	           BUSY => #state.Tsend.busy,
+	           ERROR => #state.Tsend.error,
+	           STATUS => #state.Tsend.status,
+	           DATA := #sendBuffer);
+	    
+	    // data sent to server
+	    IF #state.Tsend.done THEN
+	        #state.sent := True;
+	    END_IF;
+	END_REGION
+	REGION TCP recieve
+	    // recieve data over tcp
+	    #Trecv(EN_R := #state.recieve,
+	    ID := #tcpInfo.ID,
+	    LEN := 0,
+	    ADHOC := True,
+	    NDR => #state.Trecv.newdata,
+	    BUSY => #state.Trecv.busy,
+	    ERROR => #state.Trecv.error,
+	    STATUS => #state.Trecv.status,
+	    RCVD_LEN => #state.Trecv.length,
+	    DATA := #recvBuffer);
+	        
+	    // new data recieved
+	    IF #state.Trecv.newdata THEN
+	        #state.newdatalength := UDINT_TO_DINT(#state.Trecv.length);
+	        #state.newdata := True;
+	    END_IF;
+	END_REGION
+	REGION Reset status
+	    // reset status if tcp connection is ok
+	    IF #state.tcpConnect AND #state.Tdiag.result.State = B#16#4 AND #state.status = W#16#0002 THEN
+	        #state.status := W#16#0000;
+	    END_IF;
+	END_REGION
+	REGION Write outputs 
+	    // write status
+	    #status := #state.status;
+	    // write connected
+	    #connected := #state.tcpConnected AND #state.serverConnected;
+	END_REGION
+	REGION Not connected
+	    // reset sequencer if input connect is False or an error occurred
+	    IF NOT #connect THEN
+	        #state.step := 0;
+	        #state.status := W#16#0000;
+	        #state.init := True;
+	    END_IF;
+	END_REGION
+	REGION Error
+	    // lock sequencer if error occurred
+	    IF #state.status >= W#16#0010 THEN
+	        #state.step := -1;
+	        #state.init := True;
+	    END_IF;
+	END_REGION
+	REGION Init
+	    // init flags
+	    IF #state.init THEN
+	        #state.init := False;
+	        #state.newdata := False;
+	        #state.sent := False;
+	        #state.tcpConnect := False;
+	        #state.serverConnected := False;
+	        #state.recieve := False;
+	        #state.send := False;
+	        #ping := False;
+	        #query := False;
+	        #state.login := False;
+	    END_IF;
+	END_REGION
+	REGION Sequencer 
+	    CASE #state.step OF
+	        000: // --> JUMP to 001
+	            REGION Wait for connect input
+	                #state.tcpConnect := False;
+	                IF #connect THEN
+	                    #state.step := 1;
+	                END_IF;
+	            END_REGION
+	        001: // --> JUMP to 002
+	            REGION Connect TCP
+	                #state.tcpConnect := True;
+	                IF #state.tcpConnected THEN
+	                    #state.login := True;
+	                    #state.step := 2;
+	                    // delete recieve buffer
+	                    #recvBuffer := #empty.Buffer;
+	                END_IF;
+	            END_REGION
+	        002: // --> JUMP to 010, 020, 030
+	            REGION Wait for command
+	                // login command
+	                IF #state.login AND NOT #state.serverConnected THEN
+	                    #state.step := 10;
+	                END_IF;
+	                // ping command
+	                IF #ping AND #state.serverConnected THEN
+	                    #state.step := 20;
+	                END_IF;
+	                // query command
+	                IF #query AND #state.serverConnected THEN
+	                    #nColumns := 0;
+	                    #nRows := 0;
+	                    // delete column and row data
+	                    FOR #column.counter := 1 TO #Columns DO
+	                        FOR #counter := 0 TO #Rows DO
+	                            #resultData[#column.counter, #counter] := '';
+	                        END_FOR;
+	                    END_FOR;
+	                    #state.step := 30;
+	                END_IF;
+	            END_REGION
+	        010: // --> JUMP to 011
+	            REGION Recieve server greeting
+	                // start recieving
+	                #state.recieve := True;
+	                IF #state.newdata THEN
+	                    #state.recieve := False;
+	                    #state.newdata := False;
+	                    #state.step := 11;
+	                END_IF;
+	            END_REGION
+	        011: // --> JUMP to 012
+	            REGION Read server greeting  
+	                (*
+	                --------------------------------------------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>      protocol version
+	                Str<nul>    human-readable server version
+	                Int<4>      thread id
+	                Str<8>      auth plugin data 1 - first part of the authentication plugin data
+	                Int<1>      filler
+	                Int<2>      standard server capabilities
+	                if more data in handshake:
+	                    Int<1>      server language
+	                    Int<2>      server Status
+	                    Int<2>      extended server capabilities
+	                    if capability flag PLUGIN_AUTH is set on server:
+	                        Int<1>      authentication plugin length in byte
+	                    else
+	                        Int<1>      filler
+	                    Str<6>      filler bytes
+	                    if capability flag CLIENT_MYSQL is set on server:
+	                        Int<4>      filler
+	                    else:
+	                        Int<4>      mariadb extended server capabilities
+	                    if capability flag AUTH_PROTOCOL_41 is set on server:
+	                        Str<n>      auth plugin data 2 - second part of the authentication plugin data
+	                        Str<1>      filler
+	                    if capability flag PLUGIN_AUTH is set on server:
+	                        Str<nul>    authentication plugin name
+	                --------------------------------------------------------------------------------------
+	                *)
+	                // delete server, client and packet data
+	                #serverInfo := #empty.serverInfo;
+	                #packetInfo := #empty.packetinfo;
+	                // set array index pointer to 0
+	                #counter := 0;
+	                // read packet size
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                // read packet number
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                // read protocol version
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #serverInfo.PROTOCOL);
+	                // read human-readable server version
+	                "READ_NUL_TERMINATED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #serverInfo.VERSION);
+	                // read connection id
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 4, Dinteger => #serverInfo.CONNECTION_ID);
+	                // read auth plugin data 1
+	                "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 8, str => #serverInfo.AUTH_PLUGIN_DATA1);
+	                // read filler
+	                #counter += 1;
+	                // read standard server capabilities
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                #temp."word" := DINT_TO_WORD(#temp."dint");
+	                SCATTER(IN := #temp."word", OUT => #serverInfo.CAPABILITIES_STD);
+	                // if more data in handshake (packet length > actual index counter)
+	                IF #packetInfo.LENGTH > #counter - 1 THEN
+	                    // read server language
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #serverInfo.COLLATION);
+	                    // read server status
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                    #temp."word" := DINT_TO_WORD(#temp."dint");
+	                    SCATTER(IN := #temp."word", OUT => #serverInfo.STATUS);
+	                    // read extended server capabilities
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                    #temp."word" := DINT_TO_WORD(#temp."dint");
+	                    SCATTER(IN := #temp."word", OUT => #serverInfo.CAPABILITIES_EXT);
+	                    // if capability flag PLUGIN_AUTH is set on server
+	                    IF #serverInfo.CAPABILITIES_EXT.PLUGIN_AUTH THEN
+	                        // read authentication plugin length
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #serverInfo.AUTH_PLUGIN_LENGTH);
+	                    ELSE
+	                        // read filler 
+	                        #counter += 1;
+	                    END_IF;
+	                    // read filler
+	                    #counter += 6;
+	                    // if capability flag CLIENT_MYSQL is set on server
+	                    IF #serverInfo.CAPABILITIES_STD.CLIENT_MYSQL THEN
+	                        // read filler
+	                        #counter += 4;
+	                    ELSE
+	                        // read mariadb extended server capabilities
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 4, Dinteger => #temp."dint");
+	                        #temp."byte" := DINT_TO_BYTE(#temp."dint");
+	                        SCATTER(IN := #temp."byte", OUT => #serverInfo.CAPABILITIES_MAR);
+	                    END_IF;
+	                    // if capability flag AUTH_PROTOCOL_41 is set on server
+	                    IF #serverInfo.CAPABILITIES_STD.AUTH_PROTOCOL_41 THEN
+	                        // set length to a minimum of 12
+	                        #temp."int" := MAX(IN1 := 12, IN2 := DINT_TO_INT(#serverInfo.AUTH_PLUGIN_LENGTH - 9));
+	                        // read auth plugin data 2
+	                        "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := #temp."int", str => #serverInfo.AUTH_PLUGIN_DATA2);
+	                        // read filler
+	                        #counter += 1;
+	                    END_IF;
+	                    // if capability flag PLUGIN_AUTH is set on server
+	                    IF #serverInfo.CAPABILITIES_EXT.PLUGIN_AUTH THEN
+	                        // read authentication plugin name
+	                        "READ_NUL_TERMINATED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #serverInfo.AUTH_PLUGIN_NAME);
+	                    END_IF;
+	                END_IF;
+	                #state.step := 12;
+	            END_REGION
+	        012: // --> JUMP to 013
+	            REGION Align capabilities
+	                // Align server and client capabilities
+	                // standard capabilities
+	                GATHER(IN := #serverInfo.CAPABILITIES_STD, OUT => #temp."word");
+	                GATHER(IN := #clientInfo.CAPABILITIES_STD, OUT => #temp."word2");
+	                #temp."word" := #temp."word" AND #temp.word2;
+	                SCATTER(IN := #temp."word", OUT => #capabilities.standard);
+	                // extended capabilities
+	                GATHER(IN := #serverInfo.CAPABILITIES_EXT, OUT => #temp."word");
+	                GATHER(IN := #clientInfo.CAPABILITIES_EXT, OUT => #temp."word2");
+	                #temp."word" := #temp."word" AND #temp.word2;
+	                SCATTER(IN := #temp."word", OUT => #capabilities.extended);
+	                // mariadb capabilities
+	                GATHER(IN := #serverInfo.CAPABILITIES_MAR, OUT => #temp."byte");
+	                GATHER(IN := #clientInfo.CAPABILITIES_MAR, OUT => #temp."byte2");
+	                #temp."byte" := #temp."byte" AND #temp.byte2;
+	                SCATTER(IN := #temp."byte", OUT => #capabilities.mariadb);
+	                #state.step := 13;
+	            END_REGION
+	        013: // --> JUMP to 014
+	            REGION Encrypt password mysql_native_password
+	                //---------------------------------------------------------------------
+	                // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
+	                //---------------------------------------------------------------------
+	                #clientInfo.AUTH_PLUGIN_RESPONSE := '';
+	                // SHA1(password)
+	                "SHA1"(message := #clientInfo.PASSWORD, hexdigest => #temp."string", digest => #sha1.left);
+	                // "20-bytes random data from server" <concat> SHA1(SHA1(password))
+	                "SHA1"(message := #sha1.left, hexdigest => #temp."string", digest => #sha1.right);
+	                #temp."string" := CONCAT_STRING(IN1 := #serverInfo.AUTH_PLUGIN_DATA1, IN2 := #serverInfo.AUTH_PLUGIN_DATA2);
+	                #temp."string" := CONCAT_STRING(IN1 := #temp."string", IN2 := #sha1.right);
+	                // SHA1("20-bytes random data from server" <concat> SHA1(SHA1(password)))
+	                "SHA1"(message := #temp."string", hexdigest => #temp."string", digest => #sha1.right);
+	                // XOR every Byte form string
+	                FOR #sha1.counter := 1 TO MIN(IN1 := LEN(#sha1.left), IN2 := LEN(#sha1.right)) DO
+	                    // XOR
+	                    #temp."byte" := CHAR_TO_BYTE(#sha1.left[#sha1.counter]) XOR CHAR_TO_BYTE(#sha1.right[#sha1.counter]);
+	                    #clientInfo.AUTH_PLUGIN_RESPONSE := CONCAT_STRING(IN1 := #clientInfo.AUTH_PLUGIN_RESPONSE, IN2 := BYTE_TO_CHAR(#temp."byte"));
+	                END_FOR;
+	                #state.step := 14;
+	            END_REGION
+	        014: // --> JUMP to 050
+	            REGION Write login request
+	                (*
+	                -----------------------------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<2>      standard client capabilities, (PROTOCOL_41 always set)
+	                Int<2>      extended client capabilities
+	                Int<4>      max-packet size
+	                Int<1>      client language
+	                Str<19>     filler: all [0]
+	                if capability flag CLIENT_MYSQL is set on server and client:
+	                    Str<4>  filler: all [0]
+	                else:
+	                    Int<4>  mariadb extended server capabilities
+	                Str<nul>    username
+	                if capability flag PLUGIN_AUTH_LENENC is set on server and client:
+	                    Str<lenenc>  auth-response, n = depends on length of auth-response
+	                elif capability flag AUTH_PROTOCOL_41 is set on server and client:
+	                    Int<1>      length of auth-response
+	                    Str<n>      auth-response, n = depends on length of auth-response
+	                else:
+	                    Str<nul>    auth-response
+	                if capability flag CONNECT_WITH_DB is set on server and client:
+	                    Str<nul>    database
+	                if capability flag PLUGIN_AUTH is set on server and client:
+	                    Str<nul>    authentication plugin name
+	                if capability flag CONNECT_ATTRS is set on server and client:
+	                    Int<lenenc>  length of all key-values
+	                    Str<lenenc>  key
+	                    Str<lenenc>  value
+	                    if-more data in length of all key-values, more keys and value pairs
+	                -----------------------------------------------------------------------
+	                *)
+	                // delete send buffer
+	                #sendBuffer := #empty.Buffer;
+	                // set array index pointer to 4 (0-3 = Packet length and number) 
+	                #counter := 4;
+	                // write standard client capabilities
+	                GATHER(IN := #clientInfo.CAPABILITIES_STD, OUT => #temp."word");
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 2, Dinteger := #temp."word");
+	                // write extended client capabilities
+	                GATHER(IN := #clientInfo.CAPABILITIES_EXT, OUT => #temp."word");
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 2, Dinteger := #temp."word");
+	                // write max-packet size
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 4, Dinteger := #clientInfo.MAX_PACKET_SIZE);
+	                // write client language
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #clientInfo.COLLATION);
+	                // write filler 19 byte B#16#00 (char $00)
+	                "WRITE_FIXED_LENGTH_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 19, str := '');
+	                // if capability flag CLIENT_MYSQL is set on server and client
+	                IF #capabilities.standard.CLIENT_MYSQL THEN
+	                    // write filler
+	                    "WRITE_FIXED_LENGTH_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 4, str := '');
+	                ELSE
+	                    // write mariadb extended server capabilities
+	                    GATHER(IN := #clientInfo.CAPABILITIES_MAR, OUT => #temp."byte");
+	                    "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 4, Dinteger := #temp."byte");
+	                END_IF;
+	                // write username
+	                "WRITE_NUL_TERMINATED_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, str := #clientInfo.USERNAME);
+	                // if capability flag PLUGIN_AUTH_LENENC is set on server and client
+	                IF #capabilities.extended.PLUGIN_AUTH_LENENC THEN
+	                    // write auth-response
+	                    "WRITE_LENGTH_ENCODED_STRING"(error  => #retval."bool", data := #sendBuffer, start := #counter, str := #clientInfo.AUTH_PLUGIN_RESPONSE);
+	                // if capability flag AUTH_PROTOCOL_41 is set on server and client
+	                ELSIF #capabilities.standard.AUTH_PROTOCOL_41 THEN
+	                    // write auth-response length
+	                    #temp."int" := LEN(#clientInfo.AUTH_PLUGIN_RESPONSE);
+	                    "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #temp."int");
+	                    // write auth-response
+	                    "WRITE_FIXED_LENGTH_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := #temp."int", str := #clientInfo.AUTH_PLUGIN_RESPONSE);
+	                ELSE
+	                    // write auth-response
+	                    "WRITE_NUL_TERMINATED_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, str := #clientInfo.AUTH_PLUGIN_RESPONSE);
+	                END_IF;
+	                // if capability flag CONNECT_WITH_DB is set on server and client
+	                IF #capabilities.standard.CONNECT_WITH_DB THEN
+	                    // write database
+	                    "WRITE_NUL_TERMINATED_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, str := #clientInfo.DATABASE);
+	                END_IF;
+	                // if capability flag PLUGIN_AUTH is set on server and client
+	                IF #capabilities.extended.PLUGIN_AUTH THEN
+	                    // write authentication plugin name
+	                    "WRITE_NUL_TERMINATED_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, str := #clientInfo.AUTH_PLUGIN_NAME);
+	                END_IF;
+	                // if capability flag CONNECT_ATTRS is set on server and client
+	                IF #capabilities.extended.CONNECT_ATTRS THEN
+	                    //client capability "CONNECT_ATTRS" is set, but it is not implemented
+	                    #state.status := W#16#0011;
+	                END_IF;
+	                // calculate packet length (packet length = number of bytes - bytes(packet length data) - bytes(packet number data)
+	                #packetInfo.LENGTH := #counter - 4;
+	                #counter := 0;
+	                // write packet length
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 3, Dinteger := #packetInfo.LENGTH);
+	                // write packet number
+	                #packetInfo.NUMBER += 1;
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #packetInfo.NUMBER);
+	                #state.step := 50;
+	            END_REGION
+	        020: // --> JUMP to 050
+	            REGION Write ping to server
+	                (*
+	                COM_PING permits sending a packet containing one byte to check that the connection is active
+	                ----------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>      0x0e : COM_PING Header
+	                ----------------------------------
+	                *)
+	                // delete send buffer
+	                #sendBuffer := #empty.Buffer;
+	                // set array index pointer to 4 (0-3 = Packet length and number) 
+	                #counter := 4;
+	                // write ping header
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := B#16#0e);
+	                // calculate packet length (packet length = number of bytes - bytes(packet length data) - bytes(packet number data)
+	                #packetInfo.LENGTH := #counter - 4;
+	                #counter := 0;
+	                // write packet length
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 3, Dinteger := #packetInfo.LENGTH);
+	                // write packet number
+	                #packetInfo.NUMBER := 0;
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #packetInfo.NUMBER);
+	                #state.step := 50;
+	            END_REGION
+	        030: // --> JUMP to 050
+	            REGION Write query to server
+	                (*
+	                With the COM_QUERY command, the client sends the server an SQL statement to be executed immediately
+	                -----------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>      0x03 : COM_QUERY header
+	                Str<eof>    SQL statement
+	                -----------------------------------
+	                *)
+	                // delete send buffer
+	                #sendBuffer := #empty.Buffer;
+	                // set array index pointer to 4 (0-3 = Packet length and number) 
+	                #counter := 4;
+	                // write ping header
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := B#16#03);
+	                // write sql statement from array
+	                // get array bounds
+	                #querystatement.low := LOWER_BOUND(ARR := #querydata, DIM := 1);
+	                #querystatement.up := UPPER_BOUND(ARR := #querydata, DIM := 1);
+	                FOR #querystatement.counter := #querystatement.low TO #querystatement.up DO
+	                    #temp."string" := #querydata[#querystatement.counter];
+	                    "WRITE_FIXED_LENGTH_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := LEN(#temp."string"), str := #temp."string");
+	                END_FOR;
+	                // calculate packet length (packet length = number of bytes - bytes(packet length data) - bytes(packet number data)
+	                #packetInfo.LENGTH := #counter - 4;
+	                #counter := 0;
+	                // write packet length
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 3, Dinteger := #packetInfo.LENGTH);
+	                // write packet number
+	                #packetInfo.NUMBER := 0;
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #packetInfo.NUMBER);
+	                #state.step := 50;
+	            END_REGION
+	        050: // --> JUMP to 051
+	            REGION Send data to server
+	                // start sending
+	                #state.send := True;
+	                IF #state.sent THEN
+	                    #state.send := False;
+	                    #state.sent := False;
+	                    #state.step := 51;
+	                    // delete recieve buffer
+	                    #recvBuffer := #empty.Buffer;
+	                END_IF;
+	            END_REGION
+	        051: // --> JUMP to 052
+	            REGION Recieve server answer
+	                // start recieving
+	                #state.recieve := True;
+	                IF #state.newdata THEN
+	                    #state.recieve := False;
+	                    #state.newdata := False;
+	                    #state.step := 52;
+	                END_IF;
+	            END_REGION
+	        052: // --> JUMP to 060, 070, 080, 090
+	            REGION Check server answer
+	                // check server answer OK or AUTHSWITCHREQUEST or ERROR or RESULT
+	                // delete packet data
+	                #packetInfo := #empty.packetinfo;
+	                #errorPacket := #empty.errorPacket;
+	                #okPacket := #empty.okPacket;
+	                // set array index pointer to 0
+	                #counter := 0;
+	                // read packet size
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                // check if number of recieved bytes is top much
+	                IF #state.newdatalength >= #Buffersize THEN
+	                    // number of recieved bytes is greater than the set value number of bytes, adjust the constant "Buffersize"
+	                    #state.status := W#16#0024;
+	                END_IF;
+	                // read packet number
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                // check packet type
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #temp."dint");
+	                #packetInfo.TYPE := DINT_TO_BYTE(#temp."dint");
+	                IF #packetInfo.TYPE = B#16#00 THEN // OK packet
+	                    #state.step := 60;
+	                ELSIF #packetInfo.TYPE = B#16#fb THEN // LOCALINFILE packet
+	                    #state.status := W#16#0021;
+	                ELSIF #packetInfo.TYPE = B#16#fe THEN // AUTHSWITCHREQUEST packet
+	                    #state.step := 70;
+	                ELSIF #packetInfo.TYPE = B#16#ff THEN // ERROR packet
+	                    #state.step := 80;
+	                ELSE // RESULT packet or UNKNOWN packet
+	                    IF #query THEN // RESULT packet
+	                        #state.step := 90;
+	                    ELSE // UNKNOWN packet
+	                        #state.status := W#16#0020;
+	                    END_IF;
+	                END_IF;
+	            END_REGION
+	        060: // --> JUMP to 100
+	            REGION Read OK packet
+	                (*
+	                ---------------------------------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>      0x00: OK_Packet header or (0xFE if DEPRECATE_EOF is set)
+	                Int<lenenc> affected rows
+	                Int<lenenc> last insert id
+	                Int<2>      server status
+	                Int<2>      warning count
+	                if capability flag SESSION_TRACK is set on server and client:
+	                    Str<lenenc> info
+	                    if status flag SESSION_STATE_CHANGED is set on server:
+	                        Str<lenenc>     session state info
+	                        Str<lenenc>     value of variable
+	               ----------------------------------------------------------------------------
+	                *)
+	                // read affected rows
+	                "READ_LENGTH_ENCODED_INTEGER"(error => #retval."bool", data := #recvBuffer, start := #counter, Dinteger => #okPacket.AFFECTED_ROWS);
+	                // read last insert id
+	                "READ_LENGTH_ENCODED_INTEGER"(error => #retval."bool", data := #recvBuffer, start := #counter, Dinteger => #okPacket.LAST_INSERT_ID);
+	                // read server status
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                #temp."word" := DINT_TO_WORD(#temp."dint");
+	                SCATTER(IN := #temp."word", OUT => #serverInfo.STATUS);
+	                // read warning count
+	                "READ_FIXED_LENGTH_INT"(data := #recvBuffer, error => #retval."bool", start := #counter, bytes := 2, Dinteger => #okPacket.WARNING_COUNT);
+	                // if capability flag SESSION_TRACK is set on server and client
+	                IF #capabilities.extended.SESSION_TRACK THEN
+	                    // client capability "SESSION_TRACK" is set, but it is not implemented
+	                    #state.status := W#16#0013;
+	                END_IF;
+	                #state.step := 100;
+	            END_REGION
+	        070: // --> JUMP to 071, 075
+	            REGION Read AUTHSWITCHREQUEST packet
+	                (*
+	                ------------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>      0xfe: Authentication switch request header
+	                Str<nul>    authentication plugin name
+	                Byte<eof>   authentication plugin data
+	                ------------------------------------------------------
+	                *)
+	                // read authentication plugin name
+	                "READ_NUL_TERMINATED_STRING"(error => #retval."bool",data := #recvBuffer,start := #counter,str => #authPacket.AUTH_PLUGIN_NAME);
+	                // read authentication plugin data (rest of packet)
+	                "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 20, str => #authPacket.AUTH_PLUGIN_DATA);
+	                // wich authentication method will be used?
+	                IF #authPacket.AUTH_PLUGIN_NAME = 'caching_sha2_password' THEN
+	                    #state.step := 071;
+	                ELSIF #authPacket.AUTH_PLUGIN_NAME = 'mysql_native_password' THEN
+	                    #state.step := 075;
+	                END_IF;
+	            END_REGION
+	        071: // --> JUMP to 000
+	            REGION Encrypt password caching_sha2_password
+	                #state.status := W#16#0017;
+	                #state.step := 0;
+	            END_REGION
+	        075: // --> JUMP to 076
+	            REGION Encrypt password mysql_native_password
+	                //---------------------------------------------------------------------
+	                // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
+	                //---------------------------------------------------------------------
+	                #authPacket.AUTH_PLUGIN_RESPONSE := '';
+	                // SHA1(password)
+	                "SHA1"(message := #clientInfo.PASSWORD, hexdigest => #temp."string", digest => #sha1.left);
+	                // "20-bytes random data from server" <concat> SHA1(SHA1(password))
+	                "SHA1"(message := #sha1.left, hexdigest => #temp."string", digest => #sha1.right);
+	                #temp."string" := CONCAT_STRING(IN1 := #authPacket.AUTH_PLUGIN_DATA, IN2 := #sha1.right);
+	                // SHA1("20-bytes random data from server" <concat> SHA1(SHA1(password)))
+	                "SHA1"(message := #temp."string", hexdigest => #temp."string", digest => #sha1.right);
+	                // XOR every Byte form string
+	                FOR #sha1.counter := 1 TO MIN(IN1 := LEN(#sha1.left), IN2 := LEN(#sha1.right)) DO
+	                    // XOR
+	                    #temp."byte" := CHAR_TO_BYTE(#sha1.left[#sha1.counter]) XOR CHAR_TO_BYTE(#sha1.right[#sha1.counter]);
+	                    #authPacket.AUTH_PLUGIN_RESPONSE := CONCAT_STRING(IN1 := #authPacket.AUTH_PLUGIN_RESPONSE, IN2 := BYTE_TO_CHAR(#temp."byte"));
+	                END_FOR;
+	                #state.step := 76;
+	            END_REGION
+	        076: // --> JUMP to 050
+	            REGION Write authentication switch response
+	                (*
+	                -----------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Str<n>      authentication response
+	                -----------------------------------
+	                *)
+	                // delete send buffer
+	                #sendBuffer := #empty.Buffer;
+	                // set array index pointer to 4 (0-3 = Packet length and number) 
+	                #counter := 4;
+	                // write auth-response
+	                "WRITE_FIXED_LENGTH_STRING"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := LEN(#authPacket.AUTH_PLUGIN_RESPONSE), str := #authPacket.AUTH_PLUGIN_RESPONSE);
+	                // calculate packet length (packet length = number of bytes - bytes(packet length data) - bytes(packet number data)
+	                #packetInfo.LENGTH := #counter - 4;
+	                #counter := 0;
+	                // write packet length
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 3, Dinteger := #packetInfo.LENGTH);
+	                // write packet number
+	                #packetInfo.NUMBER += 1;
+	                "WRITE_FIXED_LENGTH_INTEGER"(error => #retval."bool", data := #sendBuffer, start := #counter, bytes := 1, Dinteger := #packetInfo.NUMBER);
+	                #state.step := 50;
+	            END_REGION
+	        080: // --> JUMP to 000
+	            REGION Read Error packet
+	                (*
+	                ------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                Int<1>  0xff: ERR_Packet header
+	                Int<2>  error code. see error list online
+	                if (error code == 0xFFFF) --> progress reporting
+	                    Int<1>      stage
+	                    Int<1>      max_stage
+	                    Int<3>      progress
+	                    Str<lenenc> progress_info
+	                else:
+	                    if (next byte = '#')
+	                        Str<1>      sql state marker '#'
+	                        Str<5>      sql state
+	                        Str<eof>    human-readable error message
+	                    else:
+	                        Str<eof>    human-readable error message
+	                ------------------------------------------------
+	                *)
+	                // read error code
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #errorPacket.ERROR_CODE);
+	                // if (error code == 0xFFFF) --> progress reporting
+	                IF #errorPacket.ERROR_CODE = W#16#FFFF THEN
+	                    // read error stage
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #errorPacket.STAGE);
+	                    // read error max stage
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #errorPacket.MAX_STAGE);
+	                    // read error progress
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #errorPacket.PROGRESS);
+	                    // read error progress info
+	                    "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #errorPacket.PROGRESS_INFO);
+	                // if (next byte = '#')    
+	                ELSE
+	                    IF BYTE_TO_CHAR(#recvBuffer[#counter]) = '#' THEN
+	                        // read sql state marker
+	                        "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, str => #errorPacket.SQL_STATE_MARKER);
+	                        // read sql state
+	                        "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 5, str => #errorPacket.SQL_STATE);
+	                        // read error message (rest of packet)
+	                        "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := DINT_TO_INT(#packetInfo.LENGTH) + 4 - #counter, str => #errorPacket.ERROR_MESSAGE);
+	                    ELSE
+	                        // read error message (rest of packet)
+	                        "READ_FIXED_LENGTH_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := DINT_TO_INT(#packetInfo.LENGTH) + 4 - #counter, str => #errorPacket.ERROR_MESSAGE);
+	                    END_IF;
+	                END_IF;
+	                #state.status := W#16#0012;
+	            END_REGION
+	        090: // --> JUMP to 060, 070, 0100
+	            REGION Read RESULT packet
+	                (*
+	                -----------------------------------------------------------------------------------------------
+	                type        description
+	                Int<3>      packet body length
+	                Int<1>      packet sequence number
+	                #### Column Count Packet ####
+	                Int<lenenc> column count
+	                if capability flag CLIENT_CACHE_METADATA is set on server and client:
+	                    Int<1>  Send metadata (0 / 1)
+	                if not capability flag CLIENT_CACHE_METADATA is set on server and client OR send metadata == 1
+	                    for each column (column count):
+	                        #### Column Definition Packet ####
+	                        Str<lenenc> catalog (always 'def')
+	                        Str<lenenc> schema
+	                        Str<lenenc> table alias
+	                        Str<lenenc> table
+	                        Str<lenenc> column alias
+	                        Str<lenenc> column
+	                        if capability flag CLIENT_EXTENDED_TYPE_INFO is set on server and client:
+	                            Int<lenenc> length of extended info
+	                            LOOP:
+	                                Int<1>      data type: 0x00 -> type, 0x01 -> format
+	                                Str<lenenc> value
+	                        Int<lenenc> length of fixed fields (=0xC)
+	                        Int<2>      character set number
+	                        Int<4>      max. column size
+	                        Int<1>      Field types
+	                        Int<2>      Field detail flag
+	                        Int<1>      decimals
+	                        Int<2>      - unused -
+	                if not capability flag DEPRECATE_EOF is set on server and client
+	                    eof_packet:
+	                    Int<3>      packet body length
+	                    Int<1>      packet sequence number
+	                    Int<1>      0xfe : EOF header
+	                    Int<2>      warning count
+	                    Int<2>      server status
+	                while next packet header != 0x00 (int:0), 0xff (int:255), 0xfe (int:254)
+	                    Str<lenenc> row data | if row data == 0xfb (int:251) --> row data == NULL
+	                 if packet == 0xff (int:255) error packet:
+	                    err_packet
+	                else:
+	                    if capability flag DEPRECATE_EOF is set on server and client
+	                        ok_packet
+	                    else:
+	                        eof_packet:
+	                        Int<3>      packet body length
+	                        Int<1>      packet sequence number
+	                        Int<1>      0xfe : EOF header
+	                        Int<2>      warning count
+	                        Int<2>      server status
+	                -----------------------------------------------------------------------------------------------
+	                *) 
+	                // reset counter
+	                #counter := 0;
+	                // reset row and column counters
+	                #nRows := 0;
+	                #nColumns := 0;
+	                // read packet size
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                // read packet number
+	                "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                // read column count
+	                "READ_LENGTH_ENCODED_INTEGER"(error => #retval."bool", data := #recvBuffer, start := #counter, Dinteger => #nColumns);
+	                #state.step := 80;
+	                // check if number of colums is bigger than max colums setting
+	                IF #nColumns > #Columns THEN
+	                    // number of colums in result data is greater than the set value number of columns, adjust the constant "Columns"
+	                    #state.status := W#16#0023;
+	                END_IF;
+	                // if capability flag CLIENT_CACHE_METADATA is set on server and client
+	                IF #capabilities.mariadb.CLIENT_CACHE_METADATA THEN
+	                    // client capability "CLIENT_CACHE_METADATA" is set, but it is not implemented
+	                    #state.status := W#16#0014;
+	                ELSE
+	                    // read columndata for each column
+	                    FOR #column.counter := 1 TO #nColumns DO
+	                        // read packet size
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                        // read packet number
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                        // read catalog
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.CATALOG);
+	                        // read schema
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.SCHEMA);
+	                        // read table alias
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.TABLE_ALIAS);
+	                        // read table
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.TABLE);
+	                        // read column alias
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.COLUMN_ALIAS);
+	                        // read column
+	                        "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #column.Info.COLUMN);
+	                        // save column name
+	                        #resultData[#column.counter, 0] := #column.Info.COLUMN;
+	                        // if capability flag CLIENT_EXTENDED_TYPE_INFO is set on server and client
+	                        IF #capabilities.mariadb.CLIENT_EXTENDED_TYPE_INFO THEN
+	                            // client capability "CLIENT_EXTENDED_TYPE_INFO" is set, but it is not implemented
+	                            #state.status := W#16#0015;
+	                        END_IF;
+	                        // read length of fixed fields
+	                        "READ_LENGTH_ENCODED_INTEGER"(error => #retval."bool", data := #recvBuffer, start := #counter, Dinteger => #column.Info.LENGTH_FIXED_FIELDS);
+	                        // read result language
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #column.Info.COLLATION);
+	                        // read max column size
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 4, Dinteger => #column.Info.MAX_SIZE);
+	                        // read field types
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #column.Info.FIELD_TYPES);
+	                        // read field flags
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #column.Info.FIELD_DETAIL_FLAG);
+	                        #temp."word" := DINT_TO_WORD(#column.Info.FIELD_DETAIL_FLAG);
+	                        SCATTER(IN := #temp."word", OUT => #column.Info.FIELD_FLAGS);
+	                        // read decimals
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #column.Info.DECIMALS);
+	                        // read filler
+	                        #counter += 2;
+	                    END_FOR;
+	                END_IF;
+	                // if not capability flag DEPRECATE_EOF is set on server and client
+	                IF NOT #capabilities.extended.DEPRECATE_EOF THEN
+	                    // read packet size
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                    // read packet number
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                    // read eof packet header
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #temp."dint");
+	                    // read warning count
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                    // read server status
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                    #temp."word" := DINT_TO_WORD(#temp."dint");
+	                    SCATTER(IN := #temp."word", OUT => #serverInfo.STATUS);
+	                END_IF;
+	                // read row data until the next eof packet is found, this is indicated by a packet length of 5 and a header byte with B#16#fe
+	                WHILE #counter < #Buffersize DO
+	                    // read packet size
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 3, Dinteger => #packetInfo.LENGTH);
+	                    // read packet number
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #packetInfo.NUMBER);
+	                    // read packet header
+	                    "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 1, Dinteger => #temp."dint");
+	                    #packetInfo.TYPE := DINT_TO_BYTE(#temp."dint");
+	                    // check packet type
+	                    IF #packetInfo.TYPE = B#16#00 AND #capabilities.extended.DEPRECATE_EOF THEN
+	                        // read ok packet
+	                        #state.step := 60;
+	                        // exit loop
+	                        EXIT;
+	                    ELSIF #packetInfo.TYPE = B#16#ff THEN
+	                        // read error packet
+	                        #state.step := 70;
+	                        // exit loop
+	                        EXIT;
+	                    ELSIF #packetInfo.TYPE = B#16#fe AND #packetInfo.LENGTH = 5 AND NOT #capabilities.extended.DEPRECATE_EOF THEN
+	                        // read warning count
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                        // read server status
+	                        "READ_FIXED_LENGTH_INT"(error => #retval."bool", data := #recvBuffer, start := #counter, bytes := 2, Dinteger => #temp."dint");
+	                        #temp."word" := DINT_TO_WORD(#temp."dint");
+	                        SCATTER(IN := #temp."word", OUT => #serverInfo.STATUS);
+	                        // result completely read
+	                        #state.step := 100;
+	                        // exit loop
+	                        EXIT;
+	                    ELSE
+	                        // read result row
+	                        // counter minus 1 because last bye was read as header but this byte was data
+	                        #counter -= 1;
+	                        // count rows + 1
+	                        #nRows += 1;
+	                        // check if number of rows is bigger than max rows setting
+	                        IF #nRows > #Rows THEN
+	                            // number of rows in result data is greater than the set value number of rows, adjust the constant "Rows"
+	                            #state.status := W#16#0025;
+	                            // exit loop
+	                            EXIT;
+	                        END_IF;
+	                        // set columns counter to 0
+	                        #column.counter := 0;
+	                        // read row data for each column
+	                        FOR #column.counter := 1 TO #nColumns DO
+	                            // check if data is NULL
+	                            IF #recvBuffer[#counter] = B#16#fb THEN
+	                                #temp."string" := 'NULL';
+	                                #counter += 1;
+	                            ELSE
+	                                "READ_LENGTH_ENCODED_STRING"(error => #retval."bool", data := #recvBuffer, start := #counter, str => #temp."string");
+	                            END_IF;
+	                            #resultData[#column.counter, #nRows] := #temp."string";
+	                        END_FOR;
+	                    END_IF;
+	                END_WHILE;
+	            END_REGION
+	        100: // --> JUMP to 002
+	            REGION Server answer successfull
+	                // if login was active
+	                IF #state.login THEN
+	                    #state.serverConnected := True;
+	                END_IF;
+	                // if ping was active
+	                IF #ping THEN
+	                    #ping := False;
+	                END_IF;
+	                // if query was active
+	                IF #query THEN
+	                    #query := False;
+	                END_IF;
+	                #state.step := 2;
+	            END_REGION
+	    END_CASE;
+	END_REGION
+END_FUNCTION_BLOCK
+
