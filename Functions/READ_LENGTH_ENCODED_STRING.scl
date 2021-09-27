@@ -1,0 +1,112 @@
+﻿FUNCTION "READ_LENGTH_ENCODED_STRING" : Void
+TITLE = READ LENGTH ENCODED STRING
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//A length encoded string is a string that is prefixed with length encoded integer describing the length of the string
+   VAR_INPUT 
+      data : Array[*] of Byte;   // data where the integer is stored
+   END_VAR
+
+   VAR_OUTPUT 
+      str : String;   // string
+      error : Bool;   // error array data to small
+   END_VAR
+
+   VAR_IN_OUT 
+      start : Int;   // start index of integer bytes in data
+   END_VAR
+
+   VAR_TEMP 
+      stringlength : DInt;   // stringlength
+      stringcounter : Int;
+      "counter" : Int;
+      arrayUp : DInt;
+      bytes : Int;   // amount of bytes in data which represent the intger
+      temp_bytes : Int;
+   END_VAR
+
+
+BEGIN
+	(*
+	A length encoded string is a string that is prefixed with
+	length encoded integer describing the length of the string
+	
+	An integer that consumes 1, 3, 4, or 9 bytes, depending on its numeric value
+	If the value is < 251, it is stored as a 1-byte integer
+	If the value is 252, it is stored as fc + 2-byte integer
+	If the value is 253, it is stored as fd + 3-byte integer
+	If the value is 254 it is stored as fe + 8-byte integer
+	*)
+	
+	#arrayUp := UPPER_BOUND(ARR := #data, DIM := 1); // get array upper bounds
+	
+	IF #data[#start] < B#16#fb THEN
+	    #bytes := 1;
+	ELSIF #data[#start] = B#16#fb THEN
+	    #bytes := 3;
+	ELSIF #data[#start] = B#16#fc THEN
+	    #bytes := 3;
+	ELSIF #data[#start] = B#16#fd THEN
+	    #bytes := 4;
+	ELSIF #data[#start] = B#16#fe THEN
+	    #bytes := 9;
+	END_IF;
+	
+	(*
+	check if data is big enough
+	example: data = Array [0..254] of Byte
+	         start = 250
+	         bytes = 4
+	         integer = Array[250] _ Array[251] _ Array[252] _ Array[253]
+	*)
+	IF #start + #bytes + - 1 <= #arrayUp THEN
+	    #error := False;
+	    CASE #bytes OF
+	        1:
+	            #stringlength.%B0 := #data[#start + 0];
+	            #stringlength.%B1 := B#16#0;
+	            #stringlength.%B2 := B#16#0;
+	            #stringlength.%B3 := B#16#0;
+	        3:
+	            #stringlength.%B0 := #data[#start + 1];
+	            #stringlength.%B1 := #data[#start + 2];
+	            #stringlength.%B2 := B#16#0;
+	            #stringlength.%B3 := B#16#0;
+	        4:
+	            #stringlength.%B0 := #data[#start + 1];
+	            #stringlength.%B1 := #data[#start + 2];
+	            #stringlength.%B2 := #data[#start + 3];
+	            #stringlength.%B3 := B#16#0;
+	        9:
+	            #stringlength.%B0 := #data[#start + 1];
+	            #stringlength.%B1 := #data[#start + 2];
+	            #stringlength.%B2 := #data[#start + 3];
+	            #stringlength.%B3 := #data[#start + 4];
+	    END_CASE;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	// add bytelength to start
+	#start := #start + #bytes;
+	
+	#str := ''; //initialise string
+	#bytes := DINT_TO_INT(LIMIT_DINT(IN := #stringlength, MN := 0, MX := 254)); // limit amount of bytes to 254
+	#temp_bytes := #start + #bytes - 1;
+	// check if data is big enough
+	IF #start + #bytes - 1 <= #arrayUp AND NOT #error THEN
+	    #error := False;
+	    FOR #counter := #start TO #start + #bytes - 1 DO
+	        #str := CONCAT_STRING(IN1 := #str, IN2 := BYTE_TO_CHAR(#data[#counter]));
+	    END_FOR;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	// add bytelength to start
+	#start := #start + #bytes;
+END_FUNCTION
+

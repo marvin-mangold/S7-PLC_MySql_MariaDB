@@ -1,0 +1,77 @@
+﻿FUNCTION "SPLIT" : Void
+TITLE = SPLIT
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : 'String'
+NAME : '1'
+VERSION : 0.1
+//Divide a string into several parts. The individual parts are recognized by a seperator.
+   VAR_INPUT 
+      Source : String;   // String to be split
+      Seperator : Char;   // The character that is looked for to split
+   END_VAR
+
+   VAR_IN_OUT 
+      Destination : Array[*] of String;   // Array where the splitted parts are saved
+      Count { S7_HiddenAssignment := 'Show'} : DInt;   // Count of splitted parts
+   END_VAR
+
+   VAR_TEMP 
+      stringLength : Int;
+      stringCounter : DInt;
+      arrayCounter : DInt;
+      arrayLow : DInt;
+      arrayUp : DInt;
+   END_VAR
+
+
+BEGIN
+	// divide a string into several parts.
+	// the individual parts are recognized by a seperator.
+	#Count := 0; // reset data counter
+	#stringLength := LEN(#Source); // get length of string
+	#arrayLow:= LOWER_BOUND(ARR := #Destination, DIM := 1); // get array lower bounds
+	#arrayUp := UPPER_BOUND(ARR := #Destination, DIM := 1); // get array upper bounds
+	#arrayCounter := #arrayLow; // reset array counter
+	
+	// clear the array
+	FOR #arrayCounter := #arrayLow TO #arrayUp DO
+	    #Destination[#arrayCounter] := '';
+	END_FOR;
+	
+	// reset array counter
+	#arrayCounter := #arrayLow;
+	
+	// only do when there are chars in string
+	IF #stringLength > 0 THEN
+	    // for each char in string do
+	    FOR #stringCounter := 1 TO #stringLength DO
+	        // check if actual char is the seperator
+	        IF #Source[#stringCounter] = #Seperator THEN
+	            // if there is already data in the actual array index
+	            IF LEN(#Destination[#arrayCounter]) > 0 THEN
+	                // point to the next array index
+	                #arrayCounter += 1;
+	            END_IF;
+	            // if actual char is not the seperator
+	        ELSE 
+	            // check if max array index is not reached
+	            IF #arrayCounter <= #arrayUp THEN
+	                // save the char in the actual array index
+	                #Destination[#arrayCounter] := CONCAT_STRING(IN1 := #Destination[#arrayCounter], IN2 := #Source[#stringCounter]); //save char
+	            ELSE
+	                // max array index is reached so exit the for loop
+	                EXIT;
+	            END_IF;
+	        END_IF;
+	    END_FOR;
+	END_IF;
+	
+	// check amount of data
+	FOR #arrayCounter := #arrayLow TO #arrayUp DO
+	    IF LEN(#Destination[#arrayCounter]) <> 0 THEN
+	        #Count += 1;
+	    END_IF;
+	END_FOR;
+END_FUNCTION
+

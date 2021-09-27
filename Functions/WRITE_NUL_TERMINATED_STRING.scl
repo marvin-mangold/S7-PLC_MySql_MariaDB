@@ -1,0 +1,59 @@
+﻿FUNCTION "WRITE_NUL_TERMINATED_STRING" : Void
+TITLE = WRITE NUL TERMINATED STRING
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//Strings that are terminated by a [00] byte
+   VAR_INPUT 
+      str : String;   // string
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   // error array data to small
+   END_VAR
+
+   VAR_IN_OUT 
+      data : Array[*] of Byte;   // data where the integer is stored
+      start : Int;   // start index of integer bytes in data
+   END_VAR
+
+   VAR_TEMP 
+      arrayUp : DInt;
+      stringlength : Int;
+      "counter" : Int;
+      stringcounter : Int;
+   END_VAR
+
+
+BEGIN
+	(*
+	strings that are terminated by a B#16#00 byte
+	possible number of bytes is 254
+	 *)
+	
+	#arrayUp := UPPER_BOUND(ARR := #data, DIM := 1); // get array upper bounds
+	// limit the amount of bytes to 253, so the last nul temrinating byte could be at the end
+	#stringlength := LIMIT_INT(IN := LEN(#str), MN := 0, MX := 253);
+	#stringcounter := 1;
+	
+	// check if data is big enough
+	IF #start + #stringlength <= #arrayUp THEN
+	    #error := False;
+	    FOR #counter := #start TO #start + #stringlength - 1 DO
+	        // check if end of string is reached
+	        IF #stringcounter <= #stringlength THEN
+	            #data[#counter] := CHAR_TO_BYTE(#str[#stringcounter]);
+	        END_IF;
+	        #stringcounter += 1;
+	    END_FOR;
+	    #data[#counter] := CHAR_TO_BYTE('$00');
+	    #counter += 1;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	#start := #counter;
+END_FUNCTION
+

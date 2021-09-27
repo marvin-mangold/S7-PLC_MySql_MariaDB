@@ -1,0 +1,340 @@
+﻿FUNCTION "SHA1" : Void
+TITLE = SHA1 
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : Encrypt
+NAME : '1'
+VERSION : 0.1
+//Sha1 is an cryptographic algorithm that takes a string of any length and reduces it to a unique fixed length string.
+//
+//Sha1 is not considered anymore as a secure hash type!
+   VAR_INPUT 
+      message : String;   // message to be hashed
+   END_VAR
+
+   VAR_OUTPUT 
+      digest : String;   // hashed message as bytes
+      hexdigest : String;   // hashed message as hex
+   END_VAR
+
+   VAR_TEMP 
+      retval : Word;   // return value of functions
+      "counter" : Int;   // counter for the smaller loops
+      empty : Bool;   // if the input is empty
+      result_uppercase : String;   // hash result as uppercase Hex String
+      result_lowercase : String;   // hash result as lowercase Hex String
+      "char" : Char;   // char
+      data : Struct   // message data
+         "Byte" : Array[1..320] of Byte;   // message data in Bytes (max Byte length with a 254 char string is 320 Byte)
+         "pointer" : Int;   // point to the actual array index
+         length : Word;   // amount of bits in message
+         checksize : Int;   // the actual amount of bits + the reserved 64 bits
+         fitsize : Int;   // the needed amount of bits to save the checksize (multiple of 512)
+         stringToCharsCnt : UInt;   // Strg_TO_Chars Output
+      END_STRUCT;
+      chunk : Struct   // chunkdata
+         "DWord" : Array[1..80] of DWord;   // chunkdata in DWords
+         amount : DInt;   // amount of 512 bit parts from data (chunks)
+         "counter" : Int;   // counter for the chunk loop
+      END_STRUCT;
+      H0 : DWord;   // initial value see RFC 3174
+      H1 : DWord;   // initial value see RFC 3174
+      H2 : DWord;   // initial value see RFC 3174
+      H3 : DWord;   // initial value see RFC 3174
+      H4 : DWord;   // initial value see RFC 3174
+      A : DWord;   // variable value see RFC 3174
+      B : DWord;   // variable value see RFC 3174
+      C : DWord;   // variable value see RFC 3174
+      D : DWord;   // variable value see RFC 3174
+      E : DWord;   // variable value see RFC 3174
+      F : DWord;   // variable value see RFC 3174
+      K : DWord;   // variable value see RFC 3174
+      TEMP : DWord;   // variable value see RFC 3174
+      HH : Array[0..4] of String[8];   // Hash H0 - H4 each with 4 Byte/Char
+   END_VAR
+
+
+BEGIN
+	REGION License and Information
+	(*
+	███████╗██╗  ██╗ █████╗  ██╗              ██████╗ ██╗      ██████╗
+	██╔════╝██║  ██║██╔══██╗███║              ██╔══██╗██║     ██╔════╝
+	███████╗███████║███████║╚██║    █████╗    ██████╔╝██║     ██║     
+	╚════██║██╔══██║██╔══██║ ██║    ╚════╝    ██╔═══╝ ██║     ██║     
+	███████║██║  ██║██║  ██║ ██║              ██║     ███████╗╚██████╗
+	╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═╝              ╚═╝     ╚══════╝ ╚═════╝                                                                                                                
+	====================================================================================================================
+	MIT License
+	Copyright (C) 2021  Marvin Mangold (Marvin.Mangold00@googlemail.com)
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	====================================================================================================================
+	Sha1 is an cryptographic algorithm that takes a string of any length and reduces it to a unique fixed length string. 
+	In this implmementation the string length is limited to a maximum length of 254 characters (String[254] - 2032 bit).
+	The digest ouput is the final hash value as a string of H1 - H4 (20 bytes string)
+	The hexdigest output is the final hash value as a hexadecimal string of H1 - H4 (40 bytes string)
+	For further informations take a look at RFC 3174
+	Sha1 is not considered anymore as a secure hash type!
+	
+	Step 00: Initialize variables H0 - H4
+	Step 01: Convert message to Bytes
+	Step 02: Appending padding Bits
+	Step 03: Append 64 Bit containg the original message length in Bits
+	Step 04: Get the amount of chunks data (chunk = 512 Bit)
+	FOR every chunk do Step 05 - Step 09:
+	    Step 05: Break the chunk into 16 DWords
+	    Step 06: Extend chunk to 80 DWords
+	    Step 07: Initialize variables A - E
+	    Step 08: Do some bitwise operations on the 80 chunk DWords
+	    Step 09: Save the chunk's hash to result for the next chunk
+	Step 10: Produce "digest"
+	Step 11: Produce "hexdigest"
+	====================================================================================================================    
+	*)
+	END_REGION
+	
+	REGION Step 0: Initialize variables H0 - H4
+	    // these are special variables wich need to be initialised with these values
+	    #H0 := DW#16#6745_2301;
+	    #H1 := DW#16#EFCD_AB89;
+	    #H2 := DW#16#98BA_DCFE;
+	    #H3 := DW#16#1032_5476;
+	    #H4 := DW#16#C3D2_E1F0;
+	END_REGION
+	    
+	REGION Step 1: Convert and save message in data as Bytes
+	    //  save the number of Bytes filled in data in #data.length
+	    Strg_TO_Chars(Strg := #message, pChars := 0, Cnt => #data.stringToCharsCnt, Chars := #data."Byte");
+	    #data."pointer" := UINT_TO_INT(#data.stringToCharsCnt);
+	END_REGION
+	
+	REGION Step 2: Appending padding Bits 
+	    // first append one "1" Bit at the end of the data
+	    // then "0" Bits are appended to the data until the size of (512 Bit - 64 Bit) is reached
+	    // the last 64 Bit are filled another way
+	    // if the data is already > (512 Bit - 64 Bit) then fill until (1024 Bit - 64 Bit)...
+	    // ...it has to be a (multiple of 512 Bit) - 64 Bit
+	    
+	    // append "1"
+	    #data."pointer" += 1;
+	    #data."Byte"[#data."pointer"] := B#2#10000000; // B#80; 
+	    
+	    // get the needed maximum size depending on actual amount of Bits + 64 Bits from message
+	    #data.checksize := (#data."pointer" * 8) + 64;
+	    
+	    #empty := False;
+	    IF 72 < #data.checksize AND #data.checksize <= 512 THEN
+	        #data.fitsize := 512;
+	    ELSIF 512 < #data.checksize AND #data.checksize <= 1024 THEN
+	        #data.fitsize := 1024;
+	    ELSIF 1024 < #data.checksize AND #data.checksize <= 1536 THEN
+	        #data.fitsize := 1536;
+	    ELSIF 1536 < #data.checksize AND #data.checksize <= 2048 THEN
+	        #data.fitsize := 2048;
+	    ELSIF 2048 < #data.checksize AND #data.checksize <= 2560 THEN
+	        #data.fitsize := 2560;
+	        // if there is an empty string, the checksize will be 8 Bit (the appended B#80) + 64 Bit = 72 Bit
+	    ELSE
+	        #empty := True;
+	    END_IF;
+	    
+	    // append the "0"s until the fitsize (minus the reserved 64 Bit) is reached
+	    FOR #counter := (#data."pointer" + 1) TO ((#data.fitsize - 64) / 8) DO
+	        #data."Byte"[#counter] := B#2#00000000; // B#00;
+	        #data."pointer" := #counter;
+	    END_FOR;
+	END_REGION
+	
+	REGION Step 3: Append 64 Bit containg the original message length in Bits
+	    // 'Test' = 32 Bits --> B#2#00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000000
+	    // the maximum amount of Bits is: 254 Bytes * 8 --> 2032 --> this fits in a Word
+	    // so append 6 Bytes with B#00
+	    FOR #counter := (#data."pointer" + 1) TO (#data."pointer" + 6) DO
+	        #data."Byte"[#counter] := B#2#00000000; // B#00;
+	        #data."pointer" := #counter;
+	    END_FOR;
+	    
+	    // get length of message in Word
+	    #data."length" := INT_TO_WORD(LEN(#message) * 8);
+	    #data."pointer" += 1;
+	    #data."Byte"[#data."pointer"] := #data."length".%B1;
+	    #data."pointer" += 1;
+	    #data."Byte"[#data."pointer"] := #data."length".%B0;
+	END_REGION
+	
+	REGION Step 4: Get the amount of chunks data (chunk = 512 Bit)
+	    #chunk.amount := CEIL(#data."pointer" * 8 / 512);
+	END_REGION
+	
+	REGION FOR every chunk do Step 05 - Step 09:
+	    // reset data pointer
+	    #data."pointer" := 1;
+	    
+	    //  for every chunk do
+	    FOR #chunk.counter := 1 TO #chunk.amount DO
+	        // clear chunkdata
+	        FILL_BLK(IN := DW#16#0,
+	                 COUNT := 80,
+	                 OUT => #chunk."DWord"[1]);
+	        
+	        REGION Step 5: Break the chunk into 16 DWords
+	            FOR #counter := 1 TO 16 DO
+	                #chunk."DWord"[#counter].%B3 := #data."Byte"[#data."pointer" + 0];
+	                #chunk."DWord"[#counter].%B2 := #data."Byte"[#data."pointer" + 1];
+	                #chunk."DWord"[#counter].%B1 := #data."Byte"[#data."pointer" + 2];
+	                #chunk."DWord"[#counter].%B0 := #data."Byte"[#data."pointer" + 3];
+	                #data."pointer" += 4;
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 6: Extend chunk to 80 DWords
+	            // FOR i from 17 TO 80
+	            // chunk."DWord"[i] = (chunk."DWord"[i - 3] XOR chunk."DWord"[i - 8] XOR chunk."DWord"[i - 14] XOR chunk."DWord"[i - 16]) leftrotate 1
+	            FOR #counter := 17 TO 80 DO
+	                #chunk."DWord"[#counter] := ROL(N := 1, IN := (#chunk."DWord"[#counter - 3] XOR #chunk."DWord"[#counter - 8] XOR #chunk."DWord"[#counter - 14] XOR #chunk."DWord"[#counter - 16]));
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 7: Initialize variables A - E
+	            // these are special variables wich are fresh initialised for every chunk loop
+	            // while running the next loop (Step 8) these variables are changing for every loop
+	            #A := #H0;
+	            #B := #H1;
+	            #C := #H2;
+	            #D := #H3;
+	            #E := #H4;
+	        END_REGION
+	        
+	        REGION Step 8: Do some bitwise operations on the 80 chunk DWords
+	            // every DWord in chunk will be processed in the following funktion
+	            // the result of the process will be saved and used for the next DWord
+	            FOR #counter := 1 TO 80 DO
+	                // do bitwise operation depending on the DWord to get F and K
+	                IF 1 <= #counter AND #counter <= 20 THEN
+	                    #F := (#B AND #C) OR ((NOT #B) AND #D);
+	                    #K := DW#16#5A82_7999;
+	                ELSIF 21 <= #counter AND #counter <= 40 THEN
+	                    #F := #B XOR #C XOR #D;
+	                    #K := DW#16#6ED9_EBA1;
+	                ELSIF 41 <= #counter AND #counter <= 60 THEN
+	                    #F := (#B AND #C) OR (#B AND #D) OR (#C AND #D);
+	                    #K := DW#16#8F1B_BCDC;
+	                ELSIF 61 <= #counter AND #counter <= 80 THEN
+	                    #F := #B XOR #C XOR #D;
+	                    #K := DW#16#CA62_C1D6;
+	                END_IF;
+	                
+	                // calculate TEMP
+	                // TEMP = (A left rotate 5) + F + E + K + (the current word).
+	                #TEMP := ROL(N := 5, IN := #A) + #F + #E + #K + #chunk."DWord"[#counter];
+	                // set the variables A - E for the next loop
+	                #E := #D;
+	                #D := #C;
+	                #C := ROL(N := 30, IN := #B);
+	                #B := #A;
+	                #A := #TEMP;
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 9: Save the chunk's hash TO result FOR the next chunk 
+	            #H0 := #H0 + #A;
+	            #H1 := #H1 + #B;
+	            #H2 := #H2 + #C;
+	            #H3 := #H3 + #D;
+	            #H4 := #H4 + #E;
+	        END_REGION
+	    END_FOR;
+	END_REGION
+	
+	REGION Step 10: Produce "digest"
+	    // the final hash value as a string of H1 - H4 (20 bytes string)
+	    // H0 = 16#A9_4A_8F_E5 H1 = 16#CC_B1_9B_A6 H2 = 16#1C_4C_08_73 H3 = 16#D3_91_E9_87 H4= 16#98_2F_BB_D3
+	    // digest = '©J$8FåÌ±›¦$1CL$08sÓ‘é‡˜/»Ó'
+	    // len(digest) = 20 bytes just the special chars destroy the readable live value
+	    
+	    #digest := CONCAT(IN1 := '', IN2 := BYTE_TO_CHAR(#H0.%B3));         
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B1));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B0));    
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B3));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B1));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B0));    
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B3));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B1));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B0));    
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B3));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B1));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B0));    
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B3));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B0));    
+	    #counter := LEN(#digest);
+	    END_REGION
+	;
+	REGION Step 11: Produce "hexdigest"
+	    // the final hash value as a hexadecimal string of H1 - H4 (40 bytes string)
+	    // H0 = 16#A94A_8FE5 H1 = 16#CCB1_9BA6 H2 = 16#1C4C_0873 H3 = 16#D391_E987 H4= 16#982F_BBD3
+	    // hexdigest = a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+	    
+	    // turn H1 - H4 in a Hexadecimal String
+	    // H0 = 16#A94A_8FE5 H1 = 16#CCB1_9BA6 H2 = 16#1C4C_0873 H3 = 16#D391_E987 H4= 16#982F_BBD3
+	    // H0 = 'A94A8FE5' H1 = 'CCB19BA6' H2 = '1C4C0873' H3 = 'D391E987' H4= '982FBBD3'
+	    #retval := HTA(IN := #H0, N := 4, OUT => #HH[0]);
+	    #retval := HTA(IN := #H1, N := 4, OUT => #HH[1]);
+	    #retval := HTA(IN := #H2, N := 4, OUT => #HH[2]);
+	    #retval := HTA(IN := #H3, N := 4, OUT => #HH[3]);
+	    #retval := HTA(IN := #H4, N := 4, OUT => #HH[4]);
+	    
+	    // concat H1 - H4
+	    // A94A8FE5CCB19BA61C4C0873D391E987982FBBD3
+	    #result_uppercase := CONCAT_STRING(IN1:= '', IN2 := #HH[0]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[1]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[2]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[3]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[4]);
+	    
+	    // turn uppercase letters to lowercase letters
+	    // a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+	    #hexdigest := '';
+	    FOR #counter := 1 TO LEN(#result_uppercase) DO
+	        // check if actual char is A - F (A = 65, F = 70) and turn it to a - f (97 - 102)
+	        IF CHAR_TO_BYTE(#result_uppercase[#counter]) >= 65 AND CHAR_TO_BYTE(#result_uppercase[#counter]) <= 70 THEN
+	            // turn uppercase letter to lowercase letter
+	            #char := BYTE_TO_CHAR(CHAR_TO_BYTE(#result_uppercase[#counter]) + 32);
+	            #result_lowercase := CONCAT_STRING(IN1 := #result_lowercase, IN2 := #char);
+	        ELSE
+	            #result_lowercase := CONCAT_STRING(IN1 := #result_lowercase, IN2 := #result_uppercase[#counter]);
+	        END_IF;
+	    END_FOR;
+	    #hexdigest := #result_lowercase;
+	END_REGION
+	
+	IF #empty THEN
+	    #digest := '';
+	    #hexdigest := '';
+	END_IF;
+END_FUNCTION
+

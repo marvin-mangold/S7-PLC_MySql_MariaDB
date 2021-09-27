@@ -1,0 +1,76 @@
+﻿FUNCTION "READ_FIXED_LENGTH_INT" : Void
+TITLE = READ FIXED LENGTH INT
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//A fixed-length integer stores its value in a series of bytes with the least significant byte first
+   VAR_INPUT 
+      data : Array[*] of Byte;   // date where the integer is stored
+      bytes : Int;   // amount of bytes in data which represent the intger
+   END_VAR
+
+   VAR_OUTPUT 
+      Dinteger : DInt;   // doule integer
+      error : Bool;   // error array data to small
+   END_VAR
+
+   VAR_IN_OUT 
+      start : Int;   // start index of integer bytes in data
+   END_VAR
+
+   VAR_TEMP 
+      arrayUp : DInt;
+   END_VAR
+
+
+BEGIN
+	(*
+	a fixed-length integer stores its value in a series of bytes with the least significant byte first
+	possible number of bytes are 1, 2, 3 ,4 ,6 ,8
+	in this implementation only length of 1, 2, 3, 4 bytes are possible
+	*)
+	
+	#arrayUp := UPPER_BOUND(ARR := #data, DIM := 1); // get array upper bounds
+	#Dinteger := 0; //initialise integer
+	
+	(*
+	check if data is big enough 
+	example: data = Array [0..254] of Byte
+	         start = 250
+	         bytes = 4
+	         integer = Array[250] _ Array[251] _ Array[252] _ Array[253]
+	*)
+	IF #start + #bytes - 1 <= #arrayUp THEN
+	    #error := False;
+	    CASE #bytes OF
+	        1:
+	            #Dinteger.%B0 := #data[#start + 0];
+	            #Dinteger.%B1 := B#16#0;
+	            #Dinteger.%B2 := B#16#0;
+	            #Dinteger.%B3 := B#16#0;
+	        2:
+	            #Dinteger.%B0 := #data[#start + 0];
+	            #Dinteger.%B1 := #data[#start + 1];
+	            #Dinteger.%B2 := B#16#0;
+	            #Dinteger.%B3 := B#16#0;
+	        3:
+	            #Dinteger.%B0 := #data[#start + 0];
+	            #Dinteger.%B1 := #data[#start + 1];
+	            #Dinteger.%B2 := #data[#start + 2];
+	            #Dinteger.%B3 := B#16#0;
+	        4:
+	            #Dinteger.%B0 := #data[#start + 0];
+	            #Dinteger.%B1 := #data[#start + 1];
+	            #Dinteger.%B2 := #data[#start + 2];
+	            #Dinteger.%B3 := #data[#start + 3];
+	    END_CASE;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	// add bytelength to start
+	#start := #start + #bytes;
+END_FUNCTION
+

@@ -1,0 +1,87 @@
+﻿FUNCTION "WRITE_LENGTH_ENCODED_INTEGER" : Void
+TITLE = WRITE LENGTH ENCODED INTEGER
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//An integer that consumes 1, 3, 4, or 9 bytes, depending on its numeric value
+   VAR_INPUT 
+      Dinteger : DInt;   // double integer
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   // error array data to small
+   END_VAR
+
+   VAR_IN_OUT 
+      data : Array[*] of Byte;   // data where the integer is stored
+      start : Int;   // start index of integer bytes in data
+   END_VAR
+
+   VAR_TEMP 
+      arrayUp : DInt;
+      bytes : Int;   // amount of bytes in data which represent the intger
+   END_VAR
+
+
+BEGIN
+	(*
+	An integer that consumes 1, 3, 4, or 9 bytes, depending on its numeric value
+	If the value is < 251, it is stored as a 1-byte integer
+	If the value is ≥ 251 and < (2**16), it is stored as fc + 2-byte integer
+	If the value is ≥ (2**16) and < (2**24), it is stored as fd + 3-byte integer
+	If the value is ≥ (2**24) and < (2**64) it is stored as fe + 8-byte integer
+	*)
+	#arrayUp := UPPER_BOUND(ARR := #data, DIM := 1); // get array upper bounds
+	
+	IF #Dinteger < 251 THEN
+	    #bytes := 1;
+	ELSIF 251 <= #Dinteger AND #Dinteger < 2 ** 16 THEN
+	    #bytes := 3;
+	ELSIF 2 ** 16 <= #Dinteger AND #Dinteger < 2 ** 24 THEN
+	    #bytes := 4;
+	ELSIF 2 ** 24 <= #Dinteger AND #Dinteger < 2 ** 64 THEN
+	    #bytes := 9;
+	END_IF;
+	
+	(*
+	check if data is big enough
+	example: data = Array [0..254] of Byte
+	         start = 250
+	         bytes = 4
+	         integer = Array[250] _ Array[251] _ Array[252] _ Array[253]
+	*)
+	IF #start + #bytes - 1 <= #arrayUp THEN
+	    #error := False;
+	    CASE #bytes OF
+	        1:
+	            #data[#start + 0] := #Dinteger.%B0;
+	        3:
+	            #data[#start + 0] := B#16#fc;
+	            #data[#start + 1] := #Dinteger.%B0;
+	            #data[#start + 2] := #Dinteger.%B1;
+	        4:
+	            #data[#start + 0] := B#16#fd;
+	            #data[#start + 1] := #Dinteger.%B0;
+	            #data[#start + 2] := #Dinteger.%B1;
+	            #data[#start + 3] := #Dinteger.%B2;
+	        9:
+	            #data[#start + 0] := B#16#fe;
+	            #data[#start + 1] := #Dinteger.%B0;
+	            #data[#start + 2] := #Dinteger.%B1;
+	            #data[#start + 3] := #Dinteger.%B2;
+	            #data[#start + 4] := #Dinteger.%B3;
+	            #data[#start + 5] := B#16#0;
+	            #data[#start + 6] := B#16#0;
+	            #data[#start + 7] := B#16#0;
+	            #data[#start + 8] := B#16#0;
+	    END_CASE;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	// add bytelength to start
+	#start := #start + #bytes;
+END_FUNCTION
+

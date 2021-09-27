@@ -1,0 +1,59 @@
+﻿FUNCTION "WRITE_FIXED_LENGTH_STRING" : Void
+TITLE = WRITE FIXED LENGTH STRING
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : MarvinMangold
+FAMILY : SQL
+NAME : '1'
+VERSION : 0.1
+//Fixed-length strings have a known, hardcoded length
+   VAR_INPUT 
+      str : String;   // string
+      bytes : Int;   // amount of bytes in data which represent the intger
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   // error array data to small
+   END_VAR
+
+   VAR_IN_OUT 
+      data : Array[*] of Byte;   // data where the integer is stored
+      start : Int;   // start index of integer bytes in data
+   END_VAR
+
+   VAR_TEMP 
+      arrayUp : DInt;
+      "counter" : Int;
+      stringcounter : Int;
+      stringlength : Int;
+      temp_bytes : Int;
+   END_VAR
+
+
+BEGIN
+	// Fixed-length strings have a known, hardcoded length
+	
+	#arrayUp := UPPER_BOUND(ARR := #data, DIM := 1); // get array upper bounds
+	#temp_bytes := LIMIT_INT(IN := #bytes, MN := 0, MX := 254); // limit amount of bytes to 254
+	#stringcounter := 1;
+	#stringlength := LEN(#str);
+	
+	// check if data is big enough
+	IF #start + #temp_bytes - 1 <= #arrayUp THEN
+	    #error := False;
+	    FOR #counter := #start TO #start + #temp_bytes - 1 DO
+	        // check if end of string is reached
+	        IF #stringcounter <= #stringlength THEN
+	            #data[#counter] := CHAR_TO_BYTE(#str[#stringcounter]);
+	        ELSE
+	            #data[#counter] := CHAR_TO_BYTE('$00');
+	        END_IF;
+	        #stringcounter += 1;
+	    END_FOR;
+	ELSE
+	    #error := True;
+	END_IF;
+	
+	// add bytelength to start
+	#start := #start + #temp_bytes;
+END_FUNCTION
+
