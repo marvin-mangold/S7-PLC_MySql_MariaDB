@@ -48,6 +48,7 @@ Parameter | Declaration | Datatype | Example | Description
 connect|Input|Bool|False|communication and connect
 connectionID|Input|CONN_OUC|16#1|connection reference / identifier
 hardwareID|Input|HW_ANY|64|HW-identifier of IE-interface submodule
+server|Input|Int|1|server (Mysql = 1 / MariaDB = 2)
 ipaddress|Input|String[15]|'192.168.0.1'|server IPv4 address '192.168.0.1'
 remotePort|Input|UInt|3306|server portnumber
 username|Input|String|'root'|server login username
