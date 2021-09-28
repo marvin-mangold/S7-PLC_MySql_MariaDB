@@ -3,8 +3,10 @@
 ### General informations 
 
     Server user settings:
-    The user you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
-    You should create a new user for connecting to plc by typing following into your server commandline:
+    The user you want to login to sql server needs to set up 
+    using "mysql_native_password" as authentication method. 
+    You should create a new user for connecting to plc by 
+    typing following into your server commandline:
     1.    CREATE USER 'your_new_username'@'%';
     2.    ALTER USER 'your_new_username'@'%' IDENTIFIED WITH 'mysql_native_password';
     3.    ALTER USER 'your_new_username'@'%' IDENTIFIED BY 'your_new_password';
@@ -57,12 +59,13 @@
     Error:
     W#16#0010:  Bad IP-Address, IP-Address should be in this format: '192.168.0.1'
     W#16#0011:  Client capability "CONNECT_ATTRS" is set, but it is not implemented
-    W#16#0012:  SQL error, for further information see instancedatablock.errorPacket.ERROR_MESSAGE
+    W#16#0012:  SQL error, for further information see errorPacket.ERROR_MESSAGE
     W#16#0013:  Client capability "SESSION_TRACK" is set, but it is not implemented
     W#16#0014:  Client capability "CLIENT_CACHE_METADATA" is set, but it is not implemented
     W#16#0015:  Client capability "CLIENT_EXTENDED_TYPE_INFO" is set, but it is not implemented
     W#16#0016:  Input "server" wrong, 1 = Mysql / 2 = MariaDB
-    W#16#0017:  The user you want to login to sql Server is set up to authenticate with "caching_sha2_password", 
+    W#16#0017:  The user you want to login to sql Server is set up to 
+                authenticate with "caching_sha2_password", 
                 change this to "mysql_native_password", or create a new user for connecting to plc by 
                 typing following into your server commandline:
                 1.    CREATE USER 'your_new_username'@'%';
@@ -72,9 +75,12 @@
                 5.    FLUSH PRIVILEGES;
     W#16#0020:  Wrong packet type recieved after login request, expectet OK or ERROR
     W#16#0021:  Recieved LOCALINFILE packet, but it is not implemented
-    W#16#0023:  Number of colums in result data is greater than the set value number of columns, adjust the constant "Columns"
-    W#16#0024:  Number of recieved bytes is greater than the set value number of bytes, adjust the constant "Buffersize"
-    W#16#0025:  Number of rows in result data is greater than the set value number of rows, adjust the constant "Rows"
+    W#16#0023:  Number of colums in result data is greater than the set value number of columns, 
+    adjust the constant "Columns"
+    W#16#0024:  Number of recieved bytes is greater than the set value number of bytes, 
+    adjust the constant "Buffersize"
+    W#16#0025:  Number of rows in result data is greater than the set value number of rows, 
+    adjust the constant "Rows"
 
 ### Server status:
         IN_TRANS                    00000000 00000001
