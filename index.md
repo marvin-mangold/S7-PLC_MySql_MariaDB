@@ -76,11 +76,11 @@
     W#16#0020:  Wrong packet type recieved after login request, expectet OK or ERROR
     W#16#0021:  Recieved LOCALINFILE packet, but it is not implemented
     W#16#0023:  Number of colums in result data is greater than the set value number of columns, 
-    adjust the constant "Columns"
+                adjust the constant "Columns"
     W#16#0024:  Number of recieved bytes is greater than the set value number of bytes, 
-    adjust the constant "Buffersize"
+                adjust the constant "Buffersize"
     W#16#0025:  Number of rows in result data is greater than the set value number of rows, 
-    adjust the constant "Rows"
+                adjust the constant "Rows"
 
 ### Server status:
         IN_TRANS                    00000000 00000001
