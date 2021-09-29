@@ -47,10 +47,9 @@
 
 ![S7-PLC_MySql_MariaDB_Bild04](https://user-images.githubusercontent.com/10088323/134992000-0deb7db5-b711-4171-844d-7caab2488be3.JPG)
 
-
 ### Video:
  
-<div align="center"><iframe align="center" src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" title="YouTube video player" frameborder="5" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+<div align="center"><iframe align="center" width="100%" height="75%" src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" title="YouTube video player" frameborder="5" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 ### Status Codes:
     Info:
