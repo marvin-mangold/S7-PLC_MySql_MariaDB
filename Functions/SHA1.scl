@@ -251,7 +251,7 @@ BEGIN
 	            END_FOR;
 	        END_REGION
 	        
-	        REGION Step 9: Save the chunk's hash TO result FOR the next chunk 
+	        REGION Step 9: Save the chunks hash TO result FOR the next chunk 
 	            #H0 := #H0 + #A;
 	            #H1 := #H1 + #B;
 	            #H2 := #H2 + #C;
