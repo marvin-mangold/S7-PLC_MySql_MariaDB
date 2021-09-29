@@ -1,6 +1,6 @@
 # S7-PLC_MySql_MariaDB
 ## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500 
-### General informations 
+### General informations:
 
     Server user settings:
     The user you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
@@ -37,11 +37,11 @@
   * Stringsize  |   chars in a String of a result (column or row) from Server
   * Buffersize  |   bytes send from Server in a message from Server
  
- ### Call
+ ### Call:
 
 ![S7-PLC_MySql_MariaDB_Bild01](https://user-images.githubusercontent.com/10088323/134990602-6688fec2-1f42-4570-974f-aeafc84e737e.JPG)
 
-### Parameter
+### Parameter:
 
 Parameter | Declaration | Datatype | Example | Description
 --- | --- | --- | --- | ---
@@ -67,11 +67,11 @@ Columns|Constant|Int|20|max number of columns
 Rows|Constant|Int|10|max number of rows
 Stringsize|Constant|Int|50|max number of chars in resultstrings
 
- ### Video
+ ### Video:
 
 https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4
 
-### Status Codes
+### Status Codes:
     Info:
     W#16#0000:  No Error
     W#16#0002:  TCP connection is not established
