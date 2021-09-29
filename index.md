@@ -1,5 +1,5 @@
 # S7-PLC_MySql_MariaDB
-## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500 <br><br> [Download](https://github.com/marvin-mangold/S7-PLC_MySql_MariaDB/archive/refs/heads/main.zip) <br>
+## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500
 ### General informations:
 
     Server user settings:
