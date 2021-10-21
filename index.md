@@ -16,8 +16,8 @@
 ![S7-PLC_MySql_MariaDB_Bild02](https://user-images.githubusercontent.com/10088323/134991945-9647c52d-6c3b-4b9b-902b-713a36e629f7.JPG)
 
 * Tested with:
-  * CPU1214C DC/DC/DC FW:V4.3
-  * CPU1514-2PN FW:V2.6
+  * CPU 1214C DC/DC/DC FW:V4.3
+  * CPU 1515-2PN FW:V2.6
   * MySql Server: 8.0.26
   * MariaDB Server: 5.5.5-10.6.4-MariaDB
 
