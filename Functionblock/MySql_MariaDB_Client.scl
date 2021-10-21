@@ -193,8 +193,8 @@ BEGIN
 	SOFTWARE.
 	--------------------------------------------------------------------------------------------------------
 	Library:        SQL
-	Tested with:    CPU1214C DC/DC/DC FW:V4.3
-	                CPU1515-2PN FW:V2.6
+	Tested with:    CPU 1214C DC/DC/DC FW:V4.3
+	                CPU 1515-2PN FW:V2.6
 	                MariaDB Server: 5.5.5-10.6.4-MariaDB
 	                MySql Server: 8.0.26
 	Requirements:   PLC:    S7-1200 or S7-1500
