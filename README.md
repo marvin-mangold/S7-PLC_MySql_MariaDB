@@ -1,5 +1,7 @@
 # S7-PLC_MySql_MariaDB
 ## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500 
+
+### Example Video:
 https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4
 
 ### General informations:
@@ -68,10 +70,6 @@ Buffersize|Constant|Int|4096|size of send and recieve buffer in bytes
 Columns|Constant|Int|20|max number of columns
 Rows|Constant|Int|10|max number of rows
 Stringsize|Constant|Int|50|max number of chars in resultstrings
-
- ### Video:
-
-https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4
 
 ### Status Codes:
     Info:
