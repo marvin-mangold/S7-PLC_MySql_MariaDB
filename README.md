@@ -4,7 +4,7 @@
 ### Example Video:
 https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4
 
-### General informations:
+### General Informations:
 
     Server user settings:
     The user that you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
