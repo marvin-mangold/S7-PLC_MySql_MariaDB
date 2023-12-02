@@ -1,5 +1,7 @@
 # S7-PLC_MySql_MariaDB
-## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500
+## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500 
+ <video src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" controls="controls" style="max-width: 730px;"> </video>
+
 ### General informations:
 
     Server user settings:
@@ -46,10 +48,6 @@
 ### Parameter:
 
 ![S7-PLC_MySql_MariaDB_Bild04](https://user-images.githubusercontent.com/10088323/134992000-0deb7db5-b711-4171-844d-7caab2488be3.JPG)
-
-### Video:
- 
- <video src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" controls="controls" style="max-width: 730px;"> </video>
 
 ### Status Codes:
     Info:
