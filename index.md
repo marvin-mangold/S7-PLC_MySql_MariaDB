@@ -19,7 +19,7 @@
   * CPU 1214C DC/DC/DC FW:V4.3
   * CPU 1515-2PN FW:V2.6
   * MySql Server: 8.0.26
-  * MariaDB Server: 5.5.5-10.6.4-MariaDB
+  * MariaDB Server: 5.5.5 - 10.6.4 and 11.2
 
 * Requirements:
   * PLC: S7-1200 or S7-1500
