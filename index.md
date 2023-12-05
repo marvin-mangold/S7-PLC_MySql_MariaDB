@@ -2,7 +2,7 @@
 ## MySql and MariaDB communication FB for Siemens PLC S7-1200 and S7-1500 
 
 ### Example Video:
- <video src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" controls="controls" style="max-width: 730px;"> </video>
+ <video src="https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-ace2-500b7aa3dfe5.mp4" controls="controls" style="width:100%"> </video>
 
 ### General Informations:
 
