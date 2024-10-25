@@ -6,14 +6,15 @@ https://user-images.githubusercontent.com/10088323/134990531-046f66e1-0961-44b2-
 
 ### General Informations:
 
-    Server user settings:
-    The user that you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
-    You should create a new user for connecting to plc by typing following into your server commandline:
-    1.    CREATE USER 'your_new_username'@'%';
-    2.    ALTER USER 'your_new_username'@'%' IDENTIFIED WITH 'mysql_native_password';
-    3.    ALTER USER 'your_new_username'@'%' IDENTIFIED BY 'your_new_password';
-    4.    GRANT ALL PRIVILEGES ON your_databasename.your_tablename TO 'your_new_username'@'%';
-    5.    FLUSH PRIVILEGES;
+Server user settings:
+The user that you want to login to sql server needs to set up using "mysql_native_password" as authentication method. 
+You should create a new user for connecting to plc by typing following into your server commandline:
+
+    CREATE USER 'your_new_username'@'%';
+    ALTER USER 'your_new_username'@'%' IDENTIFIED WITH 'mysql_native_password';
+    ALTER USER 'your_new_username'@'%' IDENTIFIED BY 'your_new_password';
+    GRANT ALL PRIVILEGES ON your_databasename.your_tablename TO 'your_new_username'@'%';
+    FLUSH PRIVILEGES;
 
 ![S7-PLC_MySql_MariaDB_Bild03](https://user-images.githubusercontent.com/10088323/134990587-494fd77e-f111-4fd2-b32c-3f1e69d1b739.JPG)
 
