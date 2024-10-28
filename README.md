@@ -20,8 +20,8 @@ You should create a new user for connecting to plc by typing following into your
 
 * Tested with:
   * PLC:
-      * CPU 1214C DC/DC/DC FW:V4.3
-      * CPU 1515-2PN FW:V2.6
+      * CPU 1214C DC/DC/DC FW: V4.3
+      * CPU 1515-2PN FW: V2.6
       * CPU 1513-1PN FW: V2.9
       * Short cycletimes like 1ms
           * Will work, but you might have problems setting query to true with TIA when debuging.
