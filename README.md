@@ -19,10 +19,15 @@ You should create a new user for connecting to plc by typing following into your
 ![S7-PLC_MySql_MariaDB_Bild03](https://user-images.githubusercontent.com/10088323/134990587-494fd77e-f111-4fd2-b32c-3f1e69d1b739.JPG)
 
 * Tested with:
-  * CPU 1214C DC/DC/DC FW:V4.3
-  * CPU 1515-2PN FW:V2.6
-  * MySql Server: 8.0.26 and 8.0.40
-  * MariaDB Server: 5.5.5 - 10.6.4, 11.2 and 11.5.2
+  * PLC:
+      * CPU 1214C DC/DC/DC FW:V4.3
+      * CPU 1515-2PN FW:V2.6
+      * CPU 1513-1PN FW: V2.9
+      * Short cycletimes like 1ms
+          * Will work, but you might have problems setting query to true with TIA when debuging.
+  * DB Servers:
+      * MySql Server: 8.0.26 and 8.0.40
+      * MariaDB Server: 5.5.5 - 10.6.4, 11.2 and 11.5.2
 
 * Requirements:
   * PLC: S7-1200 or S7-1500
