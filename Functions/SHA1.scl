@@ -1,5 +1,5 @@
 ﻿FUNCTION "SHA1" : Void
-TITLE = SHA1 
+TITLE = SHA1
 { S7_Optimized_Access := 'TRUE' }
 AUTHOR : MarvinMangold
 FAMILY : Encrypt
@@ -86,8 +86,8 @@ BEGIN
 	====================================================================================================================
 	Sha1 is an cryptographic algorithm that takes a string of any length and reduces it to a unique fixed length string. 
 	In this implmementation the string length is limited to a maximum length of 254 characters (String[254] - 2032 bit).
-	The digest ouput is the final hash value as a string of H1 - H4 (20 bytes string)
-	The hexdigest output is the final hash value as a hexadecimal string of H1 - H4 (40 bytes string)
+	The digest ouput is the final hash value as a string of H0 - H4 (20 bytes string)
+	The hexdigest output is the final hash value as a hexadecimal string of H0 - H4 (40 bytes string)
 	For further informations take a look at RFC 3174
 	Sha1 is not considered anymore as a secure hash type!
 	
@@ -116,10 +116,13 @@ BEGIN
 	    #H3 := DW#16#1032_5476;
 	    #H4 := DW#16#C3D2_E1F0;
 	END_REGION
-	    
+	
 	REGION Step 1: Convert and save message in data as Bytes
 	    //  save the number of Bytes filled in data in #data.length
-	    Strg_TO_Chars(Strg := #message, pChars := 0, Cnt => #data.stringToCharsCnt, Chars := #data."Byte");
+	    Strg_TO_Chars(Strg := #message,
+	                  pChars := 0,
+	                  Cnt => #data.stringToCharsCnt,
+	                  Chars := #data."Byte");
 	    #data."pointer" := UINT_TO_INT(#data.stringToCharsCnt);
 	END_REGION
 	
@@ -251,7 +254,7 @@ BEGIN
 	            END_FOR;
 	        END_REGION
 	        
-	        REGION Step 9: Save the chunks hash TO result FOR the next chunk 
+	        REGION Step 9: Save the chunk's hash TO result FOR the next chunk 
 	            #H0 := #H0 + #A;
 	            #H1 := #H1 + #B;
 	            #H2 := #H2 + #C;
@@ -262,46 +265,62 @@ BEGIN
 	END_REGION
 	
 	REGION Step 10: Produce "digest"
-	    // the final hash value as a string of H1 - H4 (20 bytes string)
-	    // H0 = 16#A9_4A_8F_E5 H1 = 16#CC_B1_9B_A6 H2 = 16#1C_4C_08_73 H3 = 16#D3_91_E9_87 H4= 16#98_2F_BB_D3
+	    // the final hash value as a string of H0 - H4 (20 bytes string)
+	    // H0 = 16#A9_4A_8F_E5
+	    // H1 = 16#CC_B1_9B_A6
+	    // H2 = 16#1C_4C_08_73
+	    // H3 = 16#D3_91_E9_87
+	    // H4= 16#98_2F_BB_D3
 	    // digest = '©J$8FåÌ±›¦$1CL$08sÓ‘é‡˜/»Ó'
 	    // len(digest) = 20 bytes just the special chars destroy the readable live value
 	    
-	    #digest := CONCAT(IN1 := '', IN2 := BYTE_TO_CHAR(#H0.%B3));         
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B2));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B1));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B0));    
+	    #digest := CONCAT(IN1 := '', IN2 := BYTE_TO_CHAR(#H0.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H0.%B0));
 	    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B3));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B2));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B1));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B0));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H1.%B0));
 	    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B3));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B2));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B1));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B0));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H2.%B0));
 	    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B3));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B2));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B1));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B0));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H3.%B0));
 	    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B3));    
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B2));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B2));
 	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B1));
-	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B0));    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#H4.%B0));
 	    #counter := LEN(#digest);
-	    END_REGION
+	END_REGION
 	;
 	REGION Step 11: Produce "hexdigest"
-	    // the final hash value as a hexadecimal string of H1 - H4 (40 bytes string)
-	    // H0 = 16#A94A_8FE5 H1 = 16#CCB1_9BA6 H2 = 16#1C4C_0873 H3 = 16#D391_E987 H4= 16#982F_BBD3
+	    // the final hash value as a hexadecimal string of H0 - H4 (40 bytes string)
+	    // H0 = 16#A94A_8FE5
+	    // H1 = 16#CCB1_9BA6
+	    // H2 = 16#1C4C_0873
+	    // H3 = 16#D391_E987
+	    // H4= 16#982F_BBD3
 	    // hexdigest = a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
 	    
 	    // turn H1 - H4 in a Hexadecimal String
-	    // H0 = 16#A94A_8FE5 H1 = 16#CCB1_9BA6 H2 = 16#1C4C_0873 H3 = 16#D391_E987 H4= 16#982F_BBD3
-	    // H0 = 'A94A8FE5' H1 = 'CCB19BA6' H2 = '1C4C0873' H3 = 'D391E987' H4= '982FBBD3'
+	    // H0 = 16#A94A_8FE5
+	    // H1 = 16#CCB1_9BA6
+	    // H2 = 16#1C4C_0873
+	    // H3 = 16#D391_E987
+	    // H4= 16#982F_BBD3
+	    // H0 = 'A94A8FE5'
+	    // H1 = 'CCB19BA6'
+	    // H2 = '1C4C0873'
+	    // H3 = 'D391E987'
+	    // H4= '982FBBD3'
 	    #retval := HTA(IN := #H0, N := 4, OUT => #HH[0]);
 	    #retval := HTA(IN := #H1, N := 4, OUT => #HH[1]);
 	    #retval := HTA(IN := #H2, N := 4, OUT => #HH[2]);
@@ -310,7 +329,7 @@ BEGIN
 	    
 	    // concat H1 - H4
 	    // A94A8FE5CCB19BA61C4C0873D391E987982FBBD3
-	    #result_uppercase := CONCAT_STRING(IN1:= '', IN2 := #HH[0]);
+	    #result_uppercase := CONCAT_STRING(IN1 := '', IN2 := #HH[0]);
 	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[1]);
 	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[2]);
 	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #HH[3]);
