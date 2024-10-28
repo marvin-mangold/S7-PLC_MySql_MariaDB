@@ -72,7 +72,7 @@ nRows|Output|DInt|0|number of recieved rows
 resultData|Output|Array[1..#Columns, 0..#Rows] of String[#Stringsize]||resultdata: ResultData[1,0] = Columnname ResultData[1,1-X] = Rowdata
 ping|InOut|Bool|false|ping command, will automatically be reset
 query|InOut|Bool|false|query command, will automatically be reset
-querydata|InOut|Array[*] of String||query data / sql statement, multiple lines to make larger statements
+querydata|InOut|Array[*] of String||query data / sql statement, multiple lines to make larger statements. Will be glued together as it is, remember to set your whitespaces as needed!
 Buffersize|Constant|Int|4096|size of send and recieve buffer in bytes
 Columns|Constant|Int|20|max number of columns
 Rows|Constant|Int|10|max number of rows
