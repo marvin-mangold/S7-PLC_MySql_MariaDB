@@ -1,0 +1,551 @@
+﻿FUNCTION "SHA256" : Void
+TITLE = SHA256
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : MarvinMangold
+FAMILY : Encrypt
+NAME : '1'
+VERSION : 0.1
+//Sha1 is an cryptographic algorithm that takes a string of any length and reduces it to a unique fixed length string.
+   VAR_INPUT 
+      message : String;   // message to be hashed
+   END_VAR
+
+   VAR_OUTPUT 
+      digest : String;   // hashed message as bytes
+      hexdigest : String;   // hashed message as hex
+   END_VAR
+
+   VAR_TEMP 
+      SxDataBytes : Array[0..639] of Byte;
+      SxChunks AT SxDataBytes : Array[0..9] of Struct
+         M : Array[0..15] of DWord;
+      END_STRUCT;
+      SxDataByteToBits AT SxDataBytes : Array[0..5119] of Bool;
+      SxLenDataBit : DInt;
+      SxLenDataBitToArray AT SxLenDataBit : Array[0..31] of Bool;
+      TxK : DInt;
+      TxNumberChunks : DInt;
+      Txi : DInt;
+      Txi2 : DInt;
+      TxLenData : UInt;
+      TxMessageScheduleArray : Array[0..63] of DWord;
+      TxS0 : DWord;
+      TxS1 : DWord;
+      TxWorkingVariables : Struct
+         a : DWord;
+         b : DWord;
+         c : DWord;
+         d : DWord;
+         e : DWord;
+         f : DWord;
+         g : DWord;
+         h : DWord;
+      END_STRUCT;
+      TxHashValues : Struct
+         h0 : DWord;
+         h1 : DWord;
+         h2 : DWord;
+         h3 : DWord;
+         h4 : DWord;
+         h5 : DWord;
+         h6 : DWord;
+         h7 : DWord;
+      END_STRUCT;
+      TxConstants : Array[0..63] of DWord;
+      TxCh : DWord;
+      TxTemp1 : DWord;
+      TxMaj : DWord;
+      TxTemp2 : DWord;
+      TxHTA_RetVal : DWord;
+      TxHashStrings : Array[0..7] of String[8];
+      result_uppercase : String;   // hash result as uppercase Hex String
+      result_lowercase : String;   // hash result as lowercase Hex String
+      "counter" : Int;   // counter for the smaller loops
+      "char" : Char;   // char
+   END_VAR
+
+   VAR CONSTANT 
+      CxInitHashValue0 : DWord := 16#6A09_E667;
+      CxInitHashValue1 : DWord := 16#BB67_AE85;
+      CxInitHashValue2 : DWord := 16#3C6E_F372;
+      CxInitHashValue3 : DWord := 16#A54F_F53A;
+      CxInitHashValue4 : DWord := 16#510E_527F;
+      CxInitHashValue5 : DWord := 16#9B05_688C;
+      CxInitHashValue6 : DWord := 16#1F83_D9AB;
+      CxInitHashValue7 : DWord := 16#5BE0_CD19;
+      CxRoundConstant0 : DWord := 16#428A_2F98;
+      CxRoundConstant1 : DWord := 16#7137_4491;
+      CxRoundConstant2 : DWord := 16#B5C0_FBCF;
+      CxRoundConstant3 : DWord := 16#E9B5_DBA5;
+      CxRoundConstant4 : DWord := 16#3956_C25B;
+      CxRoundConstant5 : DWord := 16#59F1_11F1;
+      CxRoundConstant6 : DWord := 16#923F_82A4;
+      CxRoundConstant7 : DWord := 16#AB1C_5ED5;
+      CxRoundConstant8 : DWord := 16#D807_AA98;
+      CxRoundConstant9 : DWord := 16#1283_5B01;
+      CxRoundConstant10 : DWord := 16#2431_85BE;
+      CxRoundConstant11 : DWord := 16#550C_7DC3;
+      CxRoundConstant12 : DWord := 16#72BE_5D74;
+      CxRoundConstant13 : DWord := 16#80DE_B1FE;
+      CxRoundConstant14 : DWord := 16#9BDC_06A7;
+      CxRoundConstant15 : DWord := 16#C19B_F174;
+      CxRoundConstant16 : DWord := 16#E49B_69C1;
+      CxRoundConstant17 : DWord := 16#EFBE_4786;
+      CxRoundConstant18 : DWord := 16#0FC1_9DC6;
+      CxRoundConstant19 : DWord := 16#240C_A1CC;
+      CxRoundConstant20 : DWord := 16#2DE9_2C6F;
+      CxRoundConstant21 : DWord := 16#4A74_84AA;
+      CxRoundConstant22 : DWord := 16#5CB0_A9DC;
+      CxRoundConstant23 : DWord := 16#76F9_88DA;
+      CxRoundConstant24 : DWord := 16#983E_5152;
+      CxRoundConstant25 : DWord := 16#A831_C66D;
+      CxRoundConstant26 : DWord := 16#B003_27C8;
+      CxRoundConstant27 : DWord := 16#BF59_7FC7;
+      CxRoundConstant28 : DWord := 16#C6E0_0BF3;
+      CxRoundConstant29 : DWord := 16#D5A7_9147;
+      CxRoundConstant30 : DWord := 16#06CA_6351;
+      CxRoundConstant31 : DWord := 16#1429_2967;
+      CxRoundConstant32 : DWord := 16#27B7_0A85;
+      CxRoundConstant33 : DWord := 16#2E1B_2138;
+      CxRoundConstant34 : DWord := 16#4D2C_6DFC;
+      CxRoundConstant35 : DWord := 16#5338_0D13;
+      CxRoundConstant36 : DWord := 16#650A_7354;
+      CxRoundConstant37 : DWord := 16#766A_0ABB;
+      CxRoundConstant38 : DWord := 16#81C2_C92E;
+      CxRoundConstant39 : DWord := 16#9272_2C85;
+      CxRoundConstant40 : DWord := 16#A2BF_E8A1;
+      CxRoundConstant41 : DWord := 16#A81A_664B;
+      CxRoundConstant42 : DWord := 16#C24B_8B70;
+      CxRoundConstant43 : DWord := 16#C76C_51A3;
+      CxRoundConstant44 : DWord := 16#D192_E819;
+      CxRoundConstant45 : DWord := 16#D699_0624;
+      CxRoundConstant46 : DWord := 16#F40E_3585;
+      CxRoundConstant47 : DWord := 16#106A_A070;
+      CxRoundConstant48 : DWord := 16#19A4_C116;
+      CxRoundConstant49 : DWord := 16#1E37_6C08;
+      CxRoundConstant50 : DWord := 16#2748_774C;
+      CxRoundConstant51 : DWord := 16#34B0_BCB5;
+      CxRoundConstant52 : DWord := 16#391C_0CB3;
+      CxRoundConstant53 : DWord := 16#4ED8_AA4A;
+      CxRoundConstant54 : DWord := 16#5B9C_CA4F;
+      CxRoundConstant55 : DWord := 16#682E_6FF3;
+      CxRoundConstant56 : DWord := 16#748F_82EE;
+      CxRoundConstant57 : DWord := 16#78A5_636F;
+      CxRoundConstant58 : DWord := 16#84C8_7814;
+      CxRoundConstant59 : DWord := 16#8CC7_0208;
+      CxRoundConstant60 : DWord := 16#90BE_FFFA;
+      CxRoundConstant61 : DWord := 16#A450_6CEB;
+      CxRoundConstant62 : DWord := 16#BEF9_A3F7;
+      CxRoundConstant63 : DWord := 16#C671_78F2;
+   END_VAR
+
+
+BEGIN
+	REGION License and Information
+	(*
+	███████╗██╗  ██╗ █████╗ ██████╗ ███████╗ ██████╗               ██████╗ ██╗      ██████╗
+	██╔════╝██║  ██║██╔══██╗╚════██╗██╔════╝██╔════╝               ██╔══██╗██║     ██╔════╝
+	███████╗███████║███████║ █████╔╝███████╗███████╗     █████╗    ██████╔╝██║     ██║     
+	╚════██║██╔══██║██╔══██║██╔═══╝ ╚════██║██╔═══██╗    ╚════╝    ██╔═══╝ ██║     ██║     
+	███████║██║  ██║██║  ██║███████╗███████║╚██████╔╝              ██║     ███████╗╚██████╗
+	╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝               ╚═╝     ╚══════╝ ╚═════╝                                                                     
+	====================================================================================================================
+	MIT License
+	Copyright (C) 2024  Marvin Mangold (Marvin.Mangold00@googlemail.com)
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	====================================================================================================================
+	SHA, which stands for secure hash algorithm, is a cryptographic hashing algorithm used to determine 
+	the integrity of a particular piece of data. SHA256 has become a successor to that of SHA1 because it is 
+	currently much more resistant to collision attacks, as it is able to generate a longer hash which is harder to break.
+	
+	The hashing is a one-way method making it almost impossible to decrypt. 
+	This in turn means that SHA256 is ideal for challenge hash authentication, finger-printing, password validation, 
+	digital signatures, uniquely identifying files, and as checksums to detect accidental data corruption.
+	
+	The digest ouput is the final hash value as a string of H0 - H7 (32 bytes string)
+	The hexdigest output is the final hash value as a hexadecimal string of H0 - H7 (64 bytes string)
+	
+	Step 00: Initialize variables H0 - H7
+	Step 01: Set constants
+	Step 02: Convert and save message in data as Bytes
+	Step 03: Calculate number of chunks and append padding Bits 
+	Step 04: Append 64 Bit containg the original message length in Bits
+	FOR every chunk do Step 05 - Step 09:
+	    Step 05: Break the chunk into 16 DWords
+	    Step 06: Extend chunk to 64 DWords
+	    Step 07: Initialize variables A - H
+	    Step 08: Do some bitwise operations on the 64 chunk DWords
+	    Step 09: Save the chunk's hash to result for the next chunk 
+	Step 10: Produce "digest"
+	Step 11: Produce "hexdigest"
+	====================================================================================================================    
+	*)
+	END_REGION
+	
+	REGION Step 00: Initialize variables H0 - H7
+	    #TxHashValues.h0 := #CxInitHashValue0;
+	    #TxHashValues.h1 := #CxInitHashValue1;
+	    #TxHashValues.h2 := #CxInitHashValue2;
+	    #TxHashValues.h3 := #CxInitHashValue3;
+	    #TxHashValues.h4 := #CxInitHashValue4;
+	    #TxHashValues.h5 := #CxInitHashValue5;
+	    #TxHashValues.h6 := #CxInitHashValue6;
+	    #TxHashValues.h7 := #CxInitHashValue7;
+	END_REGION
+	
+	REGION Step 01: Set constants
+	    #TxConstants[0] := #CxRoundConstant0;
+	    #TxConstants[1] := #CxRoundConstant1;
+	    #TxConstants[2] := #CxRoundConstant2;
+	    #TxConstants[3] := #CxRoundConstant3;
+	    #TxConstants[4] := #CxRoundConstant4;
+	    #TxConstants[5] := #CxRoundConstant5;
+	    #TxConstants[6] := #CxRoundConstant6;
+	    #TxConstants[7] := #CxRoundConstant7;
+	    #TxConstants[8] := #CxRoundConstant8;
+	    #TxConstants[9] := #CxRoundConstant9;
+	    #TxConstants[10] := #CxRoundConstant10;
+	    #TxConstants[11] := #CxRoundConstant11;
+	    #TxConstants[12] := #CxRoundConstant12;
+	    #TxConstants[13] := #CxRoundConstant13;
+	    #TxConstants[14] := #CxRoundConstant14;
+	    #TxConstants[15] := #CxRoundConstant15;
+	    #TxConstants[16] := #CxRoundConstant16;
+	    #TxConstants[17] := #CxRoundConstant17;
+	    #TxConstants[18] := #CxRoundConstant18;
+	    #TxConstants[19] := #CxRoundConstant19;
+	    #TxConstants[20] := #CxRoundConstant20;
+	    #TxConstants[21] := #CxRoundConstant21;
+	    #TxConstants[22] := #CxRoundConstant22;
+	    #TxConstants[23] := #CxRoundConstant23;
+	    #TxConstants[24] := #CxRoundConstant24;
+	    #TxConstants[25] := #CxRoundConstant25;
+	    #TxConstants[26] := #CxRoundConstant26;
+	    #TxConstants[27] := #CxRoundConstant27;
+	    #TxConstants[28] := #CxRoundConstant28;
+	    #TxConstants[29] := #CxRoundConstant29;
+	    #TxConstants[30] := #CxRoundConstant30;
+	    #TxConstants[31] := #CxRoundConstant31;
+	    #TxConstants[32] := #CxRoundConstant32;
+	    #TxConstants[33] := #CxRoundConstant33;
+	    #TxConstants[34] := #CxRoundConstant34;
+	    #TxConstants[35] := #CxRoundConstant35;
+	    #TxConstants[36] := #CxRoundConstant36;
+	    #TxConstants[37] := #CxRoundConstant37;
+	    #TxConstants[38] := #CxRoundConstant38;
+	    #TxConstants[39] := #CxRoundConstant39;
+	    #TxConstants[40] := #CxRoundConstant40;
+	    #TxConstants[41] := #CxRoundConstant41;
+	    #TxConstants[42] := #CxRoundConstant42;
+	    #TxConstants[43] := #CxRoundConstant43;
+	    #TxConstants[44] := #CxRoundConstant44;
+	    #TxConstants[45] := #CxRoundConstant45;
+	    #TxConstants[46] := #CxRoundConstant46;
+	    #TxConstants[47] := #CxRoundConstant47;
+	    #TxConstants[48] := #CxRoundConstant48;
+	    #TxConstants[49] := #CxRoundConstant49;
+	    #TxConstants[50] := #CxRoundConstant50;
+	    #TxConstants[51] := #CxRoundConstant51;
+	    #TxConstants[52] := #CxRoundConstant52;
+	    #TxConstants[53] := #CxRoundConstant53;
+	    #TxConstants[54] := #CxRoundConstant54;
+	    #TxConstants[55] := #CxRoundConstant55;
+	    #TxConstants[56] := #CxRoundConstant56;
+	    #TxConstants[57] := #CxRoundConstant57;
+	    #TxConstants[58] := #CxRoundConstant58;
+	    #TxConstants[59] := #CxRoundConstant59;
+	    #TxConstants[60] := #CxRoundConstant60;
+	    #TxConstants[61] := #CxRoundConstant61;
+	    #TxConstants[62] := #CxRoundConstant62;
+	    #TxConstants[63] := #CxRoundConstant63;
+	END_REGION
+	
+	REGION Step 02: Convert and save message in data as Bytes
+	    // reset data
+	    FILL_BLK(IN := 0,
+	             COUNT := 640,
+	             OUT => #SxDataBytes[0]);
+	    // save the number of Bytes filled in data in #TxLenData
+	    Strg_TO_Chars(Strg := #message,
+	                  pChars := 0,
+	                  Cnt => #TxLenData,
+	                  Chars := #SxDataBytes);
+	END_REGION
+	
+	REGION Step 03: Calculate number of chunks and append padding Bits 
+	    // first append one "1" Bit at the end of the data
+	    // then "0" Bits are appended to the data until the size of (512 Bit - 64 Bit) is reached
+	    // if the data is already > (512 Bit - 64 Bit) then fill until (1024 Bit - 64 Bit)...
+	    // ...it has to be a (multiple of 512 Bit) - 64 Bit
+	    
+	    // calculate number of bits from length of String
+	    #SxLenDataBit := #TxLenData * 8;
+	    
+	    // calculate number of chunks
+	    #TxNumberChunks := CEIL_DINT(IN := (DINT_TO_REAL(IN := #SxLenDataBit) + 1.0 + 64.0) / 512.0);
+	    
+	    // append "1"
+	    #SxDataBytes[#TxLenData].%X7 := True;
+	    
+	    // get the needed maximum size depending on actual amount of Bits + 64 Bits from message
+	    #TxK := 512 - ((#SxLenDataBit + 1 + 64) MOD 512);
+	END_REGION
+	
+	REGION Step 04: Append 64 Bit containg the original message length in Bits
+	    // 'Test' = 32 Bits --> B#2#00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000000
+	    FOR #Txi := 0 TO 31 DO
+	        #SxDataByteToBits[#Txi + #SxLenDataBit + 1 + #TxK] := False;
+	    END_FOR;
+	    FOR #Txi := 32 TO 63 DO
+	        #SxDataByteToBits[#Txi + #SxLenDataBit + 1 + #TxK] := #SxLenDataBitToArray[#Txi - 32];
+	    END_FOR;
+	END_REGION
+	
+	REGION For every chunk do Step 05 - Step 09:
+	    
+	    //  for every chunk do
+	    FOR #Txi := 0 TO (#TxNumberChunks - 1) DO
+	        
+	        REGION Step 05: Break the chunk into 16 DWords
+	            FOR #Txi2 := 0 TO 15 DO
+	                #TxMessageScheduleArray[#Txi2] := #SxChunks[#Txi].M[#Txi2];
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 06: Extend chunk to 64 DWords
+	            FOR #Txi2 := 16 TO 63 DO
+	                
+	                #TxS0 := ROR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 15], N := 7) XOR
+	                ROR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 15], N := 18) XOR
+	                SHR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 15], N := 3);
+	                
+	                #TxS1 := ROR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 2], N := 17) XOR
+	                ROR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 2], N := 19) XOR
+	                SHR_DWORD(IN := #TxMessageScheduleArray[#Txi2 - 2], N := 10);
+	                
+	                #TxMessageScheduleArray[#Txi2] := DINT_TO_DWORD(IN :=
+	                                                                DWORD_TO_DINT(IN := #TxMessageScheduleArray[#Txi2 - 16]) +
+	                                                                DWORD_TO_DINT(IN := #TxS0) +
+	                                                                DWORD_TO_DINT(IN := #TxMessageScheduleArray[#Txi2 - 7]) +
+	                                                                DWORD_TO_DINT(IN := #TxS1));
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 07: Initialize variables A - H
+	            // these are special variables wich are fresh initialised for every chunk loop
+	            // while running the next loop (Step 8) these variables are changing for every loop
+	            #TxWorkingVariables.a := #TxHashValues.h0;
+	            #TxWorkingVariables.b := #TxHashValues.h1;
+	            #TxWorkingVariables.c := #TxHashValues.h2;
+	            #TxWorkingVariables.d := #TxHashValues.h3;
+	            #TxWorkingVariables.e := #TxHashValues.h4;
+	            #TxWorkingVariables.f := #TxHashValues.h5;
+	            #TxWorkingVariables.g := #TxHashValues.h6;
+	            #TxWorkingVariables.h := #TxHashValues.h7;
+	        END_REGION
+	        
+	        REGION Step 08: Do some bitwise operations on the 64 chunk DWords
+	            FOR #Txi2 := 0 TO 63 DO
+	                
+	                #TxS1 := ROR_DWORD(IN := #TxWorkingVariables.e, N := 6) XOR
+	                ROR_DWORD(IN := #TxWorkingVariables.e, N := 11) XOR
+	                ROR_DWORD(IN := #TxWorkingVariables.e, N := 25);
+	                
+	                #TxCh := (#TxWorkingVariables.e AND #TxWorkingVariables.f) XOR
+	                ((NOT #TxWorkingVariables.e) AND #TxWorkingVariables.g);
+	                
+	                #TxTemp1 := DINT_TO_DWORD(IN :=
+	                                          DWORD_TO_DINT(IN := #TxWorkingVariables.h) +
+	                                          DWORD_TO_DINT(IN := #TxS1) +
+	                                          DWORD_TO_DINT(IN := #TxCh) +
+	                                          DWORD_TO_DINT(IN := #TxConstants[#Txi2]) +
+	                                          DWORD_TO_DINT(IN := #TxMessageScheduleArray[#Txi2]));
+	                
+	                #TxS0 := ROR_DWORD(IN := #TxWorkingVariables.a, N := 2) XOR
+	                ROR_DWORD(IN := #TxWorkingVariables.a, N := 13) XOR
+	                ROR_DWORD(IN := #TxWorkingVariables.a, N := 22);
+	                
+	                #TxMaj := (#TxWorkingVariables.a AND #TxWorkingVariables.b) XOR
+	                (#TxWorkingVariables.a AND #TxWorkingVariables.c) XOR
+	                (#TxWorkingVariables.b AND #TxWorkingVariables.c);
+	                
+	                #TxTemp2 := DINT_TO_DWORD(IN :=
+	                                          DWORD_TO_DINT(IN := #TxS0) +
+	                                          DWORD_TO_DINT(IN := #TxMaj));
+	                
+	                #TxWorkingVariables.h := #TxWorkingVariables.g;
+	                #TxWorkingVariables.g := #TxWorkingVariables.f;
+	                #TxWorkingVariables.f := #TxWorkingVariables.e;
+	                #TxWorkingVariables.e := DINT_TO_DWORD(IN :=
+	                                                       DWORD_TO_DINT(IN := #TxWorkingVariables.d) +
+	                                                       DWORD_TO_DINT(IN := #TxTemp1));
+	                #TxWorkingVariables.d := #TxWorkingVariables.c;
+	                #TxWorkingVariables.c := #TxWorkingVariables.b;
+	                #TxWorkingVariables.b := #TxWorkingVariables.a;
+	                #TxWorkingVariables.a := DINT_TO_DWORD(IN :=
+	                                                       DWORD_TO_DINT(IN := #TxTemp1) +
+	                                                       DWORD_TO_DINT(IN := #TxTemp2));
+	                
+	            END_FOR;
+	        END_REGION
+	        
+	        REGION Step 09: Save the chunk's hash to result for the next chunk 
+	            #TxHashValues.h0 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h0) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.a));
+	            #TxHashValues.h1 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h1) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.b));
+	            #TxHashValues.h2 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h2) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.c));
+	            #TxHashValues.h3 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h3) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.d));
+	            #TxHashValues.h4 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h4) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.e));
+	            #TxHashValues.h5 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h5) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.f));
+	            #TxHashValues.h6 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h6) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.g));
+	            #TxHashValues.h7 := DINT_TO_DWORD(IN :=
+	                                              DWORD_TO_DINT(IN := #TxHashValues.h7) +
+	                                              DWORD_TO_DINT(IN := #TxWorkingVariables.h));
+	        END_REGION
+	        
+	    END_FOR;
+	END_REGION
+	
+	REGION Step 10: Produce "digest"
+	    // the final hash value as a string of H0 - H7 (32 bytes string)
+	    // H0 = 16#A9_4A_8F_E5
+	    // H1 = 16#CC_B1_9B_A6
+	    // H2 = 16#1C_4C_08_73
+	    // H3 = 16#D3_91_E9_87
+	    // H4=  16#98_2F_BB_D3
+	    // H5 = 16#A9_4A_8F_E5
+	    // H6 = 16#CC_B1_9B_A6
+	    // H7 = 16#1C_4C_08_73
+	    // digest = '©J$8FåÌ±›¦$1CL$08sÓ‘é‡˜/»Ó©J$8FåÌ±›¦$1CL$08sÓ‘é‡˜/»Ó'
+	    // len(digest) = 32 bytes just the special chars destroy the readable live value
+	    
+	    #digest := CONCAT(IN1 := '', IN2 := BYTE_TO_CHAR(#TxHashValues.h0.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h0.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h0.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h0.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h1.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h1.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h1.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h1.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h2.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h2.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h2.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h2.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h3.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h3.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h3.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h3.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h4.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h4.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h4.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h4.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h5.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h5.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h5.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h5.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h6.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h6.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h6.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h6.%B0));
+	    
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h7.%B3));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h7.%B2));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h7.%B1));
+	    #digest := CONCAT(IN1 := #digest, IN2 := BYTE_TO_CHAR(#TxHashValues.h7.%B0));
+	    #counter := LEN(#digest);
+	END_REGION
+	
+	REGION Step 11: Produce "hexdigest"
+	    // the final hash value as a hexadecimal string of H0 - H7 (64 bytes string)
+	    // Example input 'Test'
+	    // H0 = 16#532E_AABD
+	    // H1 = 16#9574_880D
+	    // H2 = 16#BF76_B9B8
+	    // H3 = 16#CC00_832C
+	    // H4 = 16#20A6_EC11
+	    // H5 = 16#3D68_2299
+	    // H6 = 16#550D_7A6E
+	    // H7 = 16#0F34_5E25
+	    // hash = 532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25
+	    
+	    // turn H0 - H7 to a hexadecimal String
+	    // H0 = 16#532E_AABD -> '532EAABD'
+	    // H1 = 16#9574_880D -> '9574880D'
+	    // H2 = 16#BF76_B9B8 -> 'BF76B9B8'
+	    // H3 = 16#CC00_832C -> 'CC00832C'
+	    // H4 = 16#20A6_EC11 -> '20A6EC11'
+	    // H5 = 16#3D68_2299 -> '3D682299'
+	    // H6 = 16#550D_7A6E -> '550D7A6E'
+	    // H7 = 16#0F34_5E25 -> '0F345E25'
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h0, N := 4, OUT => #TxHashStrings[0]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h1, N := 4, OUT => #TxHashStrings[1]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h2, N := 4, OUT => #TxHashStrings[2]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h3, N := 4, OUT => #TxHashStrings[3]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h4, N := 4, OUT => #TxHashStrings[4]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h5, N := 4, OUT => #TxHashStrings[5]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h6, N := 4, OUT => #TxHashStrings[6]);
+	    #TxHTA_RetVal := HTA(IN := #TxHashValues.h7, N := 4, OUT => #TxHashStrings[7]);
+	    
+	    // concat H0 - H7
+	    // 532EAABD9574880DBF76B9B8CC00832C20A6EC113D682299550D7A6E0F345E25
+	    #result_uppercase := CONCAT_STRING(IN1 := '', IN2 := #TxHashStrings[0]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[1]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[2]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[3]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[4]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[5]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[6]);
+	    #result_uppercase := CONCAT_STRING(IN1 := #result_uppercase, IN2 := #TxHashStrings[7]);
+	    
+	    // turn uppercase letters to lowercase letters
+	    // 532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25
+	    #hexdigest := '';
+	    FOR #counter := 1 TO LEN(#result_uppercase) DO
+	        // check if actual char is A - F (A = 65, F = 70) and turn it to a - f (97 - 102)
+	        IF CHAR_TO_BYTE(#result_uppercase[#counter]) >= 65 AND CHAR_TO_BYTE(#result_uppercase[#counter]) <= 70 THEN
+	            // turn uppercase letter to lowercase letter
+	            #char := BYTE_TO_CHAR(CHAR_TO_BYTE(#result_uppercase[#counter]) + 32);
+	            #result_lowercase := CONCAT_STRING(IN1 := #result_lowercase, IN2 := #char);
+	        ELSE
+	            #result_lowercase := CONCAT_STRING(IN1 := #result_lowercase, IN2 := #result_uppercase[#counter]);
+	        END_IF;
+	    END_FOR;
+	    #hexdigest := #result_lowercase;
+	END_REGION
+END_FUNCTION
+
