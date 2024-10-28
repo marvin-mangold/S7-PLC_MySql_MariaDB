@@ -23,7 +23,8 @@ You should create a new user for connecting to plc by typing following into your
       * CPU 1214C DC/DC/DC FW: V4.3
       * CPU 1515-2PN FW: V2.6
       * CPU 1513-1PN FW: V2.9
-      * Short PLC cycletimes (like 1ms) Will work, but you might have problems manually setting "query" to TRUE while debugging live in TIA-Portal (Siemens Software Issue)
+      * Short PLC cycletimes (like 1ms) Will work, but you might have problems manually
+        setting "query" to TRUE while debugging live in TIA-Portal (Siemens Software Issue)
         
   * DB Servers:
       * MySql Server: 8.0.26 and 8.0.40
