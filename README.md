@@ -26,7 +26,7 @@ You should create a new user for connecting to plc by typing following into your
   * Short PLC cycletimes (like 1ms) Will work, but you might have problems manually
     setting "query" to TRUE while debugging live in TIA-Portal (Siemens Software Issue)
         
-* DB Servers:
+* SQL Server:
   * MySql Server: 8.0.26 and 8.0.40
   * MariaDB Server: 5.5.5 - 10.6.4, 11.2 and 11.5.2
 
