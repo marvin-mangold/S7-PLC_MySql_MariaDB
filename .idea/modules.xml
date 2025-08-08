@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/S7-PLC_MySql_MariaDB.iml" filepath="$PROJECT_DIR$/.idea/S7-PLC_MySql_MariaDB.iml" />
-    </modules>
-  </component>
-</project>
