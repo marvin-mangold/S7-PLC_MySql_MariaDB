@@ -441,7 +441,7 @@ BEGIN
 	    END_CASE;
 	    SCATTER(IN := #temp."word",  OUT => #clientInfo.CAPABILITIES_STD);
 	    // set capabilities extended
-	    #temp."word" := W#2#00000000_00001000;
+		#temp."word" := W#2#00000000_00001010;
 	    SCATTER(IN := #temp."word", OUT => #clientInfo.CAPABILITIES_EXT);
 	    // set capabilities mariaDB
 	    #temp."byte" := B#2#00000000;
@@ -1394,4 +1394,5 @@ BEGIN
 	    END_CASE;
 	END_REGION
 END_FUNCTION_BLOCK
+
 
