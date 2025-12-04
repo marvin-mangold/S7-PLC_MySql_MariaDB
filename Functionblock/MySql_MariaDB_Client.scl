@@ -14,6 +14,7 @@ VERSION : 0.1
       hardwareID : HW_ANY := 64;   // HW-identifier of IE-interface submodule
    END_VAR
    VAR_INPUT 
+      localPort : UInt := 2000;   // plc portnumber
       server : Int := 0;   // server (Mysql = 1 / MariaDB = 2)
    END_VAR
    VAR_INPUT DB_SPECIFIC
@@ -411,7 +412,7 @@ BEGIN
 	    #tcpInfo.ConnectionType := B#11;
 	    #tcpInfo.ActiveEstablished := True;
 	    #tcpInfo.RemotePort := #remotePort;
-	    #tcpInfo.LocalPort := 2000;
+	    #tcpInfo.LocalPort := #localPort;
 	    // split ip-address string to 4 bytes
 	    "SPLIT"(Source := #ipaddress, Seperator := '.',  Destination := #ip.strings, Count := #ip.count);
 	    // check if ip-address was detected as 4 strings
@@ -441,7 +442,7 @@ BEGIN
 	    END_CASE;
 	    SCATTER(IN := #temp."word",  OUT => #clientInfo.CAPABILITIES_STD);
 	    // set capabilities extended
-		#temp."word" := W#2#00000000_00001010;
+	    #temp."word" := W#2#00000000_00001010;
 	    SCATTER(IN := #temp."word", OUT => #clientInfo.CAPABILITIES_EXT);
 	    // set capabilities mariaDB
 	    #temp."byte" := B#2#00000000;
@@ -469,7 +470,7 @@ BEGIN
 	REGION TCP diagnose of connection
 	    // trigger for diag
 	    #state.Tdiag.trigger(IN := NOT #state.Tdiag.trigger.Q, PT := t#1s);
-	  
+	    
 	    // get tcp connection state
 	    #Tdiag(ID := #tcpInfo.ID,
 	           REQ := NOT #state.Tdiag.busy AND NOT #state.Tdiag.trigger.Q,
@@ -1394,5 +1395,4 @@ BEGIN
 	    END_CASE;
 	END_REGION
 END_FUNCTION_BLOCK
-
 
