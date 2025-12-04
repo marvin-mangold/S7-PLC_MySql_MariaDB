@@ -50,7 +50,8 @@ You should create a new user for connecting to plc by typing following into your
  
  ### Call:
 
-![S7-PLC_MySql_MariaDB_Bild01](https://user-images.githubusercontent.com/10088323/134990602-6688fec2-1f42-4570-974f-aeafc84e737e.JPG)
+![Screenshot 2025-12-04 090530](https://github.com/user-attachments/assets/230097a5-fa3a-44de-85ea-b88567cc70d4)
+
 
 ### Parameter:
 
@@ -59,6 +60,7 @@ Parameter | Declaration | Datatype | Example | Description
 connect|Input|Bool|False|communication and connect
 connectionID|Input|CONN_OUC|16#1|connection reference / identifier
 hardwareID|Input|HW_ANY|64|HW-identifier of IE-interface submodule
+localPort|Input|UInt|2000|plc portnumber
 server|Input|Int|1|server (Mysql = 1 / MariaDB = 2)
 ipaddress|Input|String[15]|'192.168.0.1'|server IPv4 address '192.168.0.1'
 remotePort|Input|UInt|3306|server portnumber
